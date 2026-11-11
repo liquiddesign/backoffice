@@ -6,11 +6,15 @@ namespace Backoffice\Shell;
 
 final class NavItem
 {
+	/**
+	 * @param array<string, mixed> $args parametry odkazu (přepnutá agenda: ['resource' => 'holiday'])
+	 */
 	public function __construct(
 		public readonly string $label,
 		public readonly string $link,
 		public readonly ?string $icon = null,
 		public readonly bool $active = false,
+		public readonly array $args = [],
 	) {
 	}
 

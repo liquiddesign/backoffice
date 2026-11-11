@@ -6,6 +6,8 @@ namespace Backoffice\DI;
 
 use Backoffice\Bridge\LegacyAdminAccessChecker;
 use Backoffice\Bridge\LegacyBridge;
+use Backoffice\Resource\ResourceDefinition;
+use Backoffice\Resource\ResourceRegistry;
 use Backoffice\Routing\Routes;
 use Backoffice\Security\AccessChecker;
 use Backoffice\Security\UserAccessChecker;
@@ -13,6 +15,7 @@ use Backoffice\Shell\Navigation;
 use Backoffice\Shell\ShellConfig;
 use Backoffice\Shell\ShellContext;
 use Backoffice\UI\AssetPresenter;
+use Backoffice\UI\ResourcePresenter;
 use Nette\Application\Application;
 use Nette\Application\IPresenterFactory;
 use Nette\Application\Routers\Route;
@@ -63,6 +66,8 @@ final class BackofficeExtension extends CompilerExtension
 			'dashboardLink' => Expect::string()->nullable(),
 			'routePrefix' => Expect::string()->nullable(),
 			'navigation' => Expect::array()->default([]),
+			// slugy agend, které už nahradily svůj starý presenter (menu + přesměrování staré adresy)
+			'switched' => Expect::listOf('string')->default([]),
 			'bridge' => Expect::structure([
 				'enabled' => Expect::bool(false),
 				'head' => Expect::string()->nullable(),
@@ -99,6 +104,12 @@ final class BackofficeExtension extends CompilerExtension
 		$builder->addDefinition($this->prefix('assetPresenter'))
 			->setFactory(AssetPresenter::class);
 
+		$builder->addDefinition($this->prefix('resourcePresenter'))
+			->setFactory(ResourcePresenter::class);
+
+		$builder->addDefinition($this->prefix('resources'))
+			->setFactory(ResourceRegistry::class, [new Statement('typed', [ResourceDefinition::class]), $config->switched]);
+
 		if (!$config->bridge->enabled) {
 			return;
 		}
@@ -125,7 +136,7 @@ final class BackofficeExtension extends CompilerExtension
 		}
 
 		if ($config->routePrefix !== null) {
-			$this->prependAssetRoute($config->routePrefix);
+			$this->prependRoutes($config->routePrefix);
 		}
 
 		$presenterFactory = $builder->getDefinitionByType(IPresenterFactory::class);
@@ -164,7 +175,7 @@ final class BackofficeExtension extends CompilerExtension
 		$definition->setFactory(LegacyAdminAccessChecker::class, ['@' . $administrators[0]]);
 	}
 
-	private function prependAssetRoute(string $prefix): void
+	private function prependRoutes(string $prefix): void
 	{
 		$router = $this->getContainerBuilder()->getDefinitionByType(Router::class);
 
@@ -174,6 +185,8 @@ final class BackofficeExtension extends CompilerExtension
 			);
 		}
 
+		// prepend řadí na začátek, takže napřed agendy, pak assety — výsledné pořadí je assety, agendy.
+		$router->addSetup('prepend', [new Statement(Route::class, [Routes::resourceMask($prefix), 'Backoffice:Resource:default'])]);
 		$router->addSetup('prepend', [new Statement(Route::class, [Routes::mask($prefix), 'Backoffice:Asset:default'])]);
 	}
 }

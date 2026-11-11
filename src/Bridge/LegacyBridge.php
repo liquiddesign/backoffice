@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Backoffice\Bridge;
 
+use Backoffice\Resource\ResourceRegistry;
 use Backoffice\Shell\ShellContext;
 use Nette\Application\Application;
 use Nette\Application\IPresenter;
@@ -25,7 +26,7 @@ final class LegacyBridge
 
 	private const LEGACY_PRESENTER = 'Admin\BackendPresenter';
 
-	public function __construct(private readonly ShellContext $shell)
+	public function __construct(private readonly ShellContext $shell, private readonly ResourceRegistry $resources)
 	{
 	}
 
@@ -38,8 +39,42 @@ final class LegacyBridge
 		}
 
 		$presenter->onStartup[] = function (Presenter $presenter): void {
+			$this->redirectToResource($presenter);
 			$this->apply($presenter);
 		};
+	}
+
+	/**
+	 * Starý presenter, který už nahradila přepnutá agenda, přesměruje na ni (záložky dál fungují).
+	 * Mapují se akce default → seznam, new → nový, detail → úprava (id ze starého parametru).
+	 */
+	private function redirectToResource(Presenter $presenter): void
+	{
+		$resource = $this->resources->findSwitchedReplacing((string) $presenter->getName());
+
+		if ($resource === null || $presenter->getSignal() !== null) {
+			return;
+		}
+
+		$meta = $resource->getMeta();
+		$args = ['resource' => $meta->getSlug()];
+		$action = match ($presenter->getAction()) {
+			'new' => 'new',
+			'detail' => 'edit',
+			default => 'default',
+		};
+
+		if ($action === 'edit') {
+			$id = $meta->getLegacyIdParameter() !== null ? $presenter->getParameter($meta->getLegacyIdParameter()) : null;
+
+			if (!\is_scalar($id) || (string) $id === '') {
+				$action = 'default';
+			} else {
+				$args['id'] = (string) $id;
+			}
+		}
+
+		$presenter->redirectPermanent(':Backoffice:Resource:' . $action, $args);
 	}
 
 	private function apply(Presenter $presenter): void

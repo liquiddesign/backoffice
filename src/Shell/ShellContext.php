@@ -32,7 +32,7 @@ final class ShellContext
 	{
 		return new ShellView(
 			config: $this->config,
-			navigation: $this->navigation->getGroups($presenter->getName()),
+			navigation: $this->navigation->getGroups($presenter->getName(), $presenter->getParameters()),
 			title: $title,
 			breadcrumbs: $this->resolveBreadcrumbs($presenter, $breadcrumbs),
 			buttons: \array_values($buttons),

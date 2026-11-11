@@ -28,7 +28,7 @@
 				{foreach $shell->navigation as $group}
 					<div class="bo-nav-group">{$group->title}</div>
 					{foreach $group->items as $item}
-						<a n:class="bo-nav-a, $item->active ? is-active" href="{plink $item->link}" n:attr="aria-current: $item->active ? page">
+						<a n:class="bo-nav-a, $item->active ? is-active" href="{plink $item->link, ...$item->args}" n:attr="aria-current: $item->active ? page">
 							{Backoffice\Shell\Icons::get($item->icon ?? $group->icon)}
 							<span>{$item->label}</span>
 						</a>

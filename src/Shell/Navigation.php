@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Backoffice\Shell;
 
+use Backoffice\Resource\ResourceRegistry;
 use Backoffice\Security\AccessChecker;
 
 /**
@@ -19,22 +20,27 @@ use Backoffice\Security\AccessChecker;
  *         "Rychlé odkazy": ':Web:Admin:QuickLinks:default'
  * ```
  *
- * Položky, na které uživatel nemá právo, vypadnou; prázdná skupina taky.
+ * Položky, na které uživatel nemá právo, vypadnou; prázdná skupina taky. Položka starého presenteru,
+ * který už nahradila přepnutá agenda (backoffice: switched:), vede rovnou na agendu.
  */
 final class Navigation
 {
 	/**
 	 * @param array<string, mixed> $menu
 	 */
-	public function __construct(private readonly array $menu, private readonly AccessChecker $access)
-	{
+	public function __construct(
+		private readonly array $menu,
+		private readonly AccessChecker $access,
+		private readonly ?ResourceRegistry $resources = null,
+	) {
 	}
 
 	/**
 	 * @param string|null $currentPresenter název aktuálního presenteru ('Web:Admin:Menu') kvůli zvýraznění
+	 * @param array<string, mixed> $currentParameters parametry aktuální stránky (agenda: resource)
 	 * @return list<\Backoffice\Shell\NavGroup>
 	 */
-	public function getGroups(?string $currentPresenter = null): array
+	public function getGroups(?string $currentPresenter = null, array $currentParameters = []): array
 	{
 		$groups = [];
 
@@ -60,8 +66,7 @@ final class Navigation
 				}
 
 				$itemIcon = \is_array($definition) && isset($definition['icon']) && \is_string($definition['icon']) ? $definition['icon'] : null;
-				$active = $currentPresenter !== null && NavItem::presenterOf($link) === $currentPresenter;
-				$items[] = new NavItem((string) $label, $link, $itemIcon, $active);
+				$items[] = $this->createItem((string) $label, $link, $itemIcon, $currentPresenter, $currentParameters);
 			}
 
 			if ($items === []) {
@@ -72,5 +77,24 @@ final class Navigation
 		}
 
 		return $groups;
+	}
+
+	/**
+	 * @param array<string, mixed> $currentParameters
+	 */
+	private function createItem(string $label, string $link, ?string $icon, ?string $currentPresenter, array $currentParameters): NavItem
+	{
+		$resource = $this->resources?->findSwitchedReplacing(NavItem::presenterOf($link));
+
+		if ($resource !== null) {
+			$slug = $resource->getMeta()->getSlug();
+			$active = $currentPresenter === 'Backoffice:Resource' && ($currentParameters['resource'] ?? null) === $slug;
+
+			return new NavItem($label, ':Backoffice:Resource:default', $icon, $active, ['resource' => $slug]);
+		}
+
+		$active = $currentPresenter !== null && NavItem::presenterOf($link) === $currentPresenter;
+
+		return new NavItem($label, $link, $icon, $active);
 	}
 }

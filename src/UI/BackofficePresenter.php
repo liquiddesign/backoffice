@@ -36,7 +36,7 @@ abstract class BackofficePresenter extends Presenter
 			$this->redirect($this->shell->config->signInLink, ['backlink' => $this->storeRequest()]);
 		}
 
-		if ($this->shell->access->isAllowed(':' . $this->getName() . ':' . $this->getAction())) {
+		if ($this->shell->access->isAllowed($this->permissionLink())) {
 			return;
 		}
 
@@ -55,6 +55,14 @@ abstract class BackofficePresenter extends Presenter
 	{
 		$this->getUser()->logout(true);
 		$this->redirect($this->shell->config->signInLink);
+	}
+
+	/**
+	 * Odkaz, na který se ptá AccessChecker. Agendy ho mění na starý presenter (Meta::replaces).
+	 */
+	protected function permissionLink(): string
+	{
+		return ':' . $this->getName() . ':' . $this->getAction();
 	}
 
 	protected function beforeRender(): void

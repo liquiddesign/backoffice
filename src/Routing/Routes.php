@@ -19,6 +19,15 @@ final class Routes
 	public static function add(RouteList $router, string $prefix): void
 	{
 		$router->addRoute(self::mask($prefix), 'Backoffice:Asset:default');
+		$router->addRoute(self::resourceMask($prefix), 'Backoffice:Resource:default');
+	}
+
+	/**
+	 * Deklarativní agendy: <prefix>/r/<agenda>[/<akce>][/<id>].
+	 */
+	public static function resourceMask(string $prefix): string
+	{
+		return Strings::trim($prefix, '/') . '/r/<resource [a-z][a-z0-9-]*>[/<action edit|new>][/<id>]';
 	}
 
 	public static function mask(string $prefix): string

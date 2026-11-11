@@ -398,3 +398,10 @@
 .bo-empty { padding: 32px 18px; text-align: center; color: var(--adm-muted); }
 textarea.bo-input { height: auto; min-height: 90px; padding: 8px 10px; }
 .bo-field-error { color: var(--adm-danger); font-size: 12.5px; }
+
+/* Agendy */
+.bo-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; border-top: 1px solid var(--adm-line-soft); }
+.bo-dl { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 10px 20px; margin: 0; }
+.bo-dl dt { color: var(--adm-muted); font-size: 13px; }
+.bo-dl dd { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.bo-table td .bo-pill + .bo-pill { margin-left: 4px; }
