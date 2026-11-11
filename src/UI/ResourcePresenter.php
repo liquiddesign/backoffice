@@ -97,7 +97,7 @@ final class ResourcePresenter extends BackofficePresenter
 
 		$this->title = $this->entityTitle($this->getEntity());
 		$this->breadcrumbs = [[$meta->getTitle(), 'default'], [$this->title]];
-		$this->renderForm();
+		$this->prepareForm();
 	}
 
 	public function renderNew(): void
@@ -106,7 +106,7 @@ final class ResourcePresenter extends BackofficePresenter
 
 		$this->title = 'Nový: ' . $meta->getItemTitle();
 		$this->breadcrumbs = [[$meta->getTitle(), 'default'], ['Nový záznam']];
-		$this->renderForm();
+		$this->prepareForm();
 	}
 
 	#[Requires(methods: 'POST', sameOrigin: true)]
@@ -171,7 +171,7 @@ final class ResourcePresenter extends BackofficePresenter
 		return $this->getDefinition()->getMeta()->permissionLink($this->getAction());
 	}
 
-	private function renderForm(): void
+	private function prepareForm(): void
 	{
 		$this->buttons = [$this->button('Zpět na seznam', 'default', variant: 'ghost')];
 		$this->template->sections = $this->getDefinition()->buildForm()->getSections();
