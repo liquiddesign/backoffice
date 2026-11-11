@@ -99,10 +99,12 @@ final class BackofficeExtension extends CompilerExtension
 		$builder->addDefinition($this->prefix('assetPresenter'))
 			->setFactory(AssetPresenter::class);
 
-		if ($config->bridge->enabled) {
-			$builder->addDefinition($this->prefix('legacyBridge'))
-				->setFactory(LegacyBridge::class);
+		if (!$config->bridge->enabled) {
+			return;
 		}
+
+		$builder->addDefinition($this->prefix('legacyBridge'))
+			->setFactory(LegacyBridge::class);
 	}
 
 	public function beforeCompile(): void
