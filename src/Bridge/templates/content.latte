@@ -1,0 +1,68 @@
+{* Tělo starého presenteru v novém shellu. Nadpis, drobečky a tlačítka vykresluje shell. *}
+{block content}
+	{if $displayLabels ?? null}
+		<div class="bo-legacy-labels">
+			{foreach $displayLabels as $label}<p>{$label|noescape}</p>{/foreach}
+		</div>
+	{/if}
+	<section class="bo-card bo-legacy-card">
+		<nav n:if="$tabs ?? null" class="bo-tabs" aria-label="Záložky">
+			{foreach $tabs as $tab => $label}
+				{if substr($tab, 0, 1) === '@'}
+					{do $tab = substr($tab, 1)}
+					<a n:class="bo-tab, ($tab === $presenter->getAction() || $tab === ($activeTab ?? null)) ? is-active" href="{plink $tab}">{$label|noescape}</a>
+				{elseif substr($tab, 0, 1) === '/'}
+					<a n:class="bo-tab, $tab === ($activeTab ?? null) ? is-active" href="{$tab}">{$label|noescape}</a>
+				{else}
+					<a n:class="bo-tab, ($tab === $presenter->getParameter('tab') || $tab === ($activeTab ?? null)) ? is-active" href="{plink $presenter->getAction() tab => $tab}">{$label|noescape}</a>
+				{/if}
+			{/foreach}
+		</nav>
+		<div class="bo-card-body">
+			{if $displayControls ?? null}
+				{foreach $displayControls as $ctr}
+					{if get_class($ctr) === Nette\Utils\Html::class}
+						{$ctr->render()|noescape}
+					{else}
+						{$ctr->render()}
+					{/if}
+				{/foreach}
+			{/if}
+		</div>
+	</section>
+{/block}
+
+{* Hromadná úprava — převzato z liquiddesign/admin (_default.latte), potřebuje jQuery z legacyHead. *}
+{block scripts}
+	{ifset $bulkEdit}
+	<script n:attr="nonce: $cspNonce ?? null">
+		$(document).ready(function () {
+			{do $iterator = (new ArrayObject($bulkEdit->getComponents()))->getIterator()}
+			{while $iterator->valid()}
+			{do $current = $iterator->current()}
+			{if Nette\Utils\Strings::match($current->getName(),'/^.+Original$/')}
+			{do $iterator->next()}
+			{do $next = $iterator->current()}
+			{if $next instanceOf Forms\LocaleContainer}
+			$(#{=$next['cs']->getHtmlId()|noescape}).addClass('disabled');
+			{else}
+			$(#{$next->getHtmlId()|noescape}).addClass('disabled');
+			$(#{$current->getHtmlId()|noescape}).change(function () {
+				if (this.checked) {
+					$(#{$next->getHtmlId()|noescape}).addClass('disabled');
+				} else {
+					$(#{$next->getHtmlId()|noescape}).removeClass('disabled');
+				}
+			});
+			$(#{$next->getHtmlId()|noescape}).click(function () {
+				$(#{$current->getHtmlId()|noescape}).prop('checked', false);
+				$(#{$next->getHtmlId()|noescape}).removeClass('disabled');
+			});
+			{/if}
+			{/if}
+			{do $iterator->next()}
+			{/while}
+		});
+	</script>
+	{/ifset}
+{/block}

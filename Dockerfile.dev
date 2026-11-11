@@ -1,0 +1,51 @@
+# Dev image playgroundu liquiddesign/backoffice — PHP 8.3 + Apache.
+#
+# Do image jde celé repo: playground/ si balík bere přes composer path repozitář "..", takže
+# instance vždy běží s balíkem z té samé větve. Docroot je playground/www.
+FROM php:8.3-apache
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends git unzip curl libicu-dev libzip-dev; \
+    docker-php-ext-install -j"$(nproc)" pdo_mysql intl zip opcache; \
+    a2enmod rewrite headers remoteip; \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+ENV APACHE_DOCUMENT_ROOT=/var/www/backoffice/playground/www
+
+RUN set -eux; \
+    sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf; \
+    printf '%s\n' \
+      'ServerName localhost' \
+      '<Directory /var/www/backoffice/playground/www>' \
+      '    AllowOverride All' \
+      '    Require all granted' \
+      '</Directory>' \
+      'RemoteIPHeader X-Forwarded-For' \
+      'RemoteIPInternalProxy 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16' \
+      'SetEnvIf X-Forwarded-Proto "^https$" HTTPS=on' \
+      > /etc/apache2/conf-available/lqd.conf; \
+    a2enconf lqd; \
+    printf '%s\n' \
+      'memory_limit=512M' \
+      'date.timezone=Europe/Prague' \
+      'opcache.enable=1' \
+      'opcache.validate_timestamps=1' \
+      'opcache.revalidate_freq=1' \
+      > /usr/local/etc/php/conf.d/lqd.ini
+
+WORKDIR /var/www/backoffice
+COPY . .
+
+WORKDIR /var/www/backoffice/playground
+RUN composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader \
+    && mkdir -p temp/sessions log \
+    && chown -R www-data:www-data temp log
+
+COPY docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint-dev.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-dev.sh
+
+ENTRYPOINT ["docker-entrypoint-dev.sh"]
+CMD ["apache2-foreground"]

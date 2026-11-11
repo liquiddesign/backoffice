@@ -1,0 +1,7 @@
+.git
+vendor
+playground/vendor
+playground/temp/*
+playground/log/*
+playground/config/local.neon
+node_modules

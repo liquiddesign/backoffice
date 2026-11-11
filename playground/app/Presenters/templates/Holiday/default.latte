@@ -1,0 +1,29 @@
+{block content}
+	<section class="bo-card">
+		<div class="bo-table-wrap" n:if="$items">
+			<table class="bo-table">
+				<thead>
+					<tr><th>Datum</th><th>Název</th><th>EN</th><th>Stav</th><th><span class="bo-muted">Akce</span></th></tr>
+				</thead>
+				<tbody>
+					<tr n:foreach="$items as $item">
+						<td class="bo-mono">{$item->date|date:'j. n. Y'}</td>
+						<td><a n:href="edit $item->getPK()">{$item->getValue('name', 'cs')}</a></td>
+						<td class="bo-muted">{$item->getValue('name', 'en')}</td>
+						<td>
+							<span n:if="$item->active" class="bo-pill bo-pill-ok">Aktivní</span>
+							<span n:if="!$item->active" class="bo-pill">Neaktivní</span>
+						</td>
+						<td>
+							<div class="bo-row-actions">
+								<a class="bo-btn bo-btn-ghost" n:href="edit $item->getPK()">Upravit</a>
+								<a class="bo-btn bo-btn-ghost" n:href="delete! $item->getPK()" data-confirm="Smazat neobchodní den?">Smazat</a>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div n:if="!$items" class="bo-empty">Zatím žádné neobchodní dny.</div>
+	</section>
+{/block}

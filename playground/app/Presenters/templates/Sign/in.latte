@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Přihlášení · {$title}</title>
+	<link rel="stylesheet" href="{$cssHref}">
+</head>
+<body class="bo-body bo-env-dev">
+	<div class="bo-env-stripe"></div>
+	<main class="bo-login">
+		<section class="bo-card bo-login-card">
+			<div class="bo-card-body">
+				<h1 class="bo-login-title">{$title}</h1>
+				<p class="bo-login-sub">Playground · <span class="bo-pill bo-env-pill"><span class="bo-env-dot"></span>DEV</span></p>
+				<form n:name="signInForm">
+					<div n:foreach="$form->getOwnErrors() as $error" class="bo-flash bo-flash-error" role="alert"><span>{$error}</span></div>
+					<div class="bo-field">
+						<label n:name="login">Přihlašovací jméno</label>
+						<input n:name="login" class="bo-input">
+					</div>
+					<div class="bo-field">
+						<label n:name="password">Heslo</label>
+						<input n:name="password" class="bo-input">
+					</div>
+					<button n:name="send" class="bo-btn bo-btn-primary bo-btn-block">Přihlásit</button>
+				</form>
+			</div>
+		</section>
+	</main>
+</body>
+</html>

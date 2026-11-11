@@ -1,0 +1,39 @@
+{block content}
+	<section class="bo-card">
+		<div class="bo-card-head"><h2>Základní údaje</h2></div>
+		<div class="bo-card-body">
+			<form n:name="form">
+				<div n:foreach="$form->getOwnErrors() as $error" class="bo-flash bo-flash-error" role="alert"><span>{$error}</span></div>
+				<div class="bo-form-grid">
+					<div class="bo-field">
+						<label n:name="date">Datum</label>
+						<input n:name="date" class="bo-input">
+						<span class="bo-field-error" n:ifcontent>{inputError date}</span>
+					</div>
+				</div>
+				<div class="bo-form-grid">
+					{formContainer name}
+						<div class="bo-field">
+							<label n:name="cs">Název · CS</label>
+							<input n:name="cs" class="bo-input">
+							<span class="bo-field-error" n:ifcontent>{inputError cs}</span>
+						</div>
+						<div class="bo-field">
+							<label n:name="en">Název · EN</label>
+							<input n:name="en" class="bo-input">
+						</div>
+					{/formContainer}
+				</div>
+				<div class="bo-field">
+					<label n:name="note">Poznámka</label>
+					<textarea n:name="note" class="bo-input"></textarea>
+				</div>
+				<label class="bo-check"><input n:name="active:"> Aktivní</label>
+				<div class="bo-form-actions">
+					<button n:name="save" class="bo-btn bo-btn-primary">Uložit</button>
+					<a class="bo-btn bo-btn-ghost" n:href="default">Zrušit</a>
+				</div>
+			</form>
+		</div>
+	</section>
+{/block}

@@ -1,0 +1,9 @@
+# MySQL 8.0 jako PSE a další projekty; shim `mariadb` pro nástroje IDE (instance_db_*).
+FROM mysql:8.0
+
+RUN set -eux; \
+    for pair in mariadb:mysql mariadb-dump:mysqldump mariadb-admin:mysqladmin; do \
+        name="${pair%%:*}"; target="${pair##*:}"; \
+        printf '#!/bin/sh\nexec %s "$@"\n' "$target" > "/usr/local/bin/$name"; \
+        chmod +x "/usr/local/bin/$name"; \
+    done

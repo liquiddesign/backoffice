@@ -1,0 +1,60 @@
+# Dev stack playgroundu pro ide1 (Coolify). Vzor: docker-compose.dev.yml v PSE.
+#   - DB se jmenuje `backoffice-db`: jméno služby je ve sdílené síti DNS alias
+#   - žádný container_name ani publikované porty; ven jde přes Traefik a doménu
+#   - Traefik service-name s prefixem projektu, musí být unikátní napříč appkami
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      DB_HOST: backoffice-db
+      DB_NAME: ${DB_NAME:-backoffice}
+      DB_USER: ${DB_USER:-backoffice}
+      DB_PASS: ${DB_PASS:-backoffice}
+      PLAYGROUND_USER: ${PLAYGROUND_USER:-admin}
+      PLAYGROUND_PASSWORD: ${PLAYGROUND_PASSWORD:-backoffice}
+      DEBUG_MODE: ${DEBUG_MODE:-1}
+      TZ: Europe/Prague
+    depends_on:
+      backoffice-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/robots.txt"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.services.backoffice-web.loadbalancer.server.port=80"
+
+  backoffice-db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db-dev
+    image: backoffice-dev-mysql:8.0
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_czech_ci
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-root}
+      MYSQL_DATABASE: ${DB_NAME:-backoffice}
+      MYSQL_USER: ${DB_USER:-backoffice}
+      MYSQL_PASSWORD: ${DB_PASS:-backoffice}
+      TZ: Europe/Prague
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  mysql_data:

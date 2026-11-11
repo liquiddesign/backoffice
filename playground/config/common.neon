@@ -1,0 +1,66 @@
+parameters:
+	db:
+		host: backoffice-db
+		dbname: backoffice
+		user: backoffice
+		password: backoffice
+	# Přihlášení do playgroundu (instance je jen na VPN). Přepíše se v local.neon z proměnných.
+	playgroundUser: admin
+	playgroundPassword: backoffice
+
+application:
+	errorPresenter: Error
+	mapping:
+		*: Playground\Presenters\*Presenter
+
+session:
+	expiration: 14 days
+	savePath: %tempDir%/sessions
+
+extensions:
+	storm: StORM\Bridges\StormDI
+	migrator: Migrator\Bridges\MigratorDI
+	backoffice: Backoffice\DI\BackofficeExtension
+
+storm:
+	debug: %debugMode%
+	connections:
+		default:
+			host: %db.host%
+			dbname: %db.dbname%
+			user: %db.user%
+			password: %db.password%
+			charset: utf8mb4
+			collate: utf8mb4_czech_ci
+			mutations:
+				cs: '_cs'
+				en: '_en'
+			primaryKeyGenerator: StORM\DIConnection::generateUuid
+
+backoffice:
+	title: Administrace
+	subtitle: Playground
+	environment: dev
+	webUrl: https://github.com/liquiddesign/backoffice
+	signInLink: ':Sign:in'
+	signOutLink: 'logout!'
+	dashboardLink: ':Dashboard:default'
+	navigation:
+		"Přehled":
+			icon: dashboard
+			items:
+				"Nástěnka": ':Dashboard:default'
+		"Burza":
+			icon: newspaper
+			items:
+				"Neobchodní dny":
+					link: ':Holiday:default'
+					icon: file
+
+services:
+	router: Playground\Router\RouterFactory::createRouter
+	authenticator: Nette\Security\SimpleAuthenticator(
+		passwords: [%playgroundUser%: %playgroundPassword%]
+		data: [%playgroundUser%: [fullName: 'Playground Admin']]
+	)
+	- Playground\Model\HolidayRepository

@@ -1,0 +1,400 @@
+/*
+ * liquiddesign/backoffice — shell. Ručně psané, dokud nepřijdou Vue ostrůvky a build (Vite).
+ * Všechny třídy mají prefix bo-, aby se nepraly se starým adminem (Bootstrap 4 + AdminLTE),
+ * který most načítá do stejné stránky. Projekt mění vzhled přes proměnné --adm-*.
+ */
+:root {
+	--adm-primary: #50037f;
+	--adm-primary-600: #3e0263;
+	--adm-primary-soft: #f3edf8;
+	--adm-primary-line: #cdbfdb;
+	--adm-accent: #f6a800;
+	--adm-bg: #f0f3f7;
+	--adm-surface: #fff;
+	--adm-surface-2: #f7f8fa;
+	--adm-hover: #f3f5f8;
+	--adm-ink: #1f2731;
+	--adm-text: #2b3440;
+	--adm-text-2: #3a4552;
+	--adm-muted: #5f6b78;
+	--adm-line: #dfe3ea;
+	--adm-line-soft: #edf0f4;
+	--adm-ok: #1e6b30;
+	--adm-ok-soft: #e6f4ea;
+	--adm-info: #1a5fb4;
+	--adm-info-soft: #e7f0fd;
+	--adm-warn: #8a5200;
+	--adm-warn-soft: #fbf0dc;
+	--adm-danger: #b42318;
+	--adm-danger-soft: #fde8e7;
+	--adm-env: #e8590c;
+	--adm-env-soft: #fdebe0;
+	--adm-radius: 6px;
+	--adm-radius-sm: 4px;
+	--adm-side-w: 248px;
+	--adm-font: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--adm-mono: "Roboto Mono", Consolas, monospace;
+}
+
+.bo-env-test { --adm-env: #b26b00; --adm-env-soft: #fbf0dc; }
+.bo-env-stage { --adm-env: #1a5fb4; --adm-env-soft: #e7f0fd; }
+
+.bo-body {
+	margin: 0;
+	background: var(--adm-bg);
+	color: var(--adm-text);
+	font: 14px/1.45 var(--adm-font);
+	-webkit-font-smoothing: antialiased;
+}
+
+.bo-body a { color: var(--adm-primary); }
+.bo-body a:hover { color: var(--adm-primary-600); }
+
+.bo-ic { flex: none; }
+
+.bo-env-stripe { height: 3px; background: var(--adm-env); }
+
+.bo-app { display: flex; min-height: 100vh; }
+
+/* Boční menu */
+.bo-side {
+	width: var(--adm-side-w);
+	flex: none;
+	background: var(--adm-surface);
+	border-right: 1px solid var(--adm-line);
+	display: flex;
+	flex-direction: column;
+	position: sticky;
+	top: 0;
+	height: 100vh;
+	overflow-y: auto;
+}
+
+.bo-brand {
+	height: 56px;
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 0 18px;
+	border-bottom: 1px solid var(--adm-line);
+	text-decoration: none;
+	box-sizing: border-box;
+}
+
+.bo-body .bo-brand { color: var(--adm-text); }
+.bo-brand-mark { color: var(--adm-primary); display: flex; }
+.bo-brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.bo-brand-text strong { font-size: 15px; font-weight: 700; }
+.bo-brand-text small { font-size: 11px; color: var(--adm-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.bo-nav { padding: 6px 0 20px; }
+
+.bo-nav-group {
+	padding: 14px 18px 4px;
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: #6b7684;
+}
+
+.bo-body .bo-nav-a {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 32px;
+	padding: 0 10px;
+	margin: 1px 8px;
+	border-radius: var(--adm-radius-sm);
+	text-decoration: none;
+	font-size: 13.5px;
+	color: var(--adm-text-2);
+}
+
+.bo-body .bo-nav-a:hover { background: var(--adm-hover); color: var(--adm-ink); }
+
+.bo-body .bo-nav-a.is-active {
+	background: var(--adm-primary-soft);
+	color: var(--adm-primary);
+	font-weight: 500;
+	box-shadow: inset 3px 0 0 var(--adm-primary);
+}
+
+.bo-nav-a .bo-ic { color: var(--adm-muted); }
+.bo-nav-a.is-active .bo-ic { color: var(--adm-primary); }
+
+/* Hlavní část */
+.bo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.bo-top {
+	height: 56px;
+	flex: none;
+	background: var(--adm-surface);
+	border-bottom: 1px solid var(--adm-line);
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 0 20px;
+	box-sizing: border-box;
+	position: sticky;
+	top: 0;
+	z-index: 20;
+}
+
+.bo-spacer { flex: 1; }
+
+.bo-search {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 36px;
+	width: 420px;
+	max-width: 100%;
+	padding: 0 10px;
+	border: 1px solid var(--adm-line);
+	border-radius: var(--adm-radius-sm);
+	background: var(--adm-surface-2);
+	color: var(--adm-muted);
+	font: 14px var(--adm-font);
+	box-sizing: border-box;
+	cursor: pointer;
+}
+
+.bo-search span { flex: 1; text-align: left; }
+.bo-search:disabled { cursor: default; }
+
+.bo-kbd {
+	font: 500 11px var(--adm-mono);
+	padding: 1px 5px;
+	border: 1px solid #cfd5de;
+	border-bottom-width: 2px;
+	border-radius: 3px;
+	color: var(--adm-muted);
+	background: #fff;
+}
+
+.bo-user {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding-left: 12px;
+	border-left: 1px solid var(--adm-line);
+	font-size: 13.5px;
+}
+
+.bo-avatar {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	background: var(--adm-primary-soft);
+	color: var(--adm-primary);
+	font-size: 12px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* Tlačítka a štítky */
+.bo-body .bo-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 36px;
+	padding: 0 14px;
+	border-radius: var(--adm-radius-sm);
+	border: 1px solid transparent;
+	font: 500 14px var(--adm-font);
+	cursor: pointer;
+	text-decoration: none;
+	white-space: nowrap;
+	box-sizing: border-box;
+	background: none;
+}
+
+.bo-body .bo-btn-primary { background: var(--adm-primary); color: #fff; }
+.bo-body .bo-btn-primary:hover { background: var(--adm-primary-600); color: #fff; }
+.bo-body .bo-btn-outline { background: #fff; color: var(--adm-primary); border-color: var(--adm-primary-line); }
+.bo-body .bo-btn-outline:hover { background: var(--adm-primary-soft); color: var(--adm-primary); }
+.bo-body .bo-btn-ghost { background: transparent; color: var(--adm-text-2); }
+.bo-body .bo-btn-ghost:hover { background: #eceff3; color: var(--adm-ink); }
+.bo-body .bo-btn-danger { background: #fff; color: var(--adm-danger); border-color: #f1c4c0; }
+.bo-body .bo-btn-icon { width: 36px; padding: 0; justify-content: center; }
+
+.bo-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 22px;
+	padding: 0 9px;
+	border-radius: 11px;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	box-sizing: border-box;
+	background: #eceff3;
+	color: #4a5562;
+}
+
+.bo-pill-ok { background: var(--adm-ok-soft); color: var(--adm-ok); }
+.bo-pill-info { background: var(--adm-info-soft); color: var(--adm-info); }
+.bo-pill-warn { background: var(--adm-warn-soft); color: var(--adm-warn); }
+.bo-pill-danger { background: var(--adm-danger-soft); color: var(--adm-danger); }
+.bo-pill-brand { background: var(--adm-primary-soft); color: var(--adm-primary); }
+
+.bo-env-pill { height: 26px; background: var(--adm-env-soft); color: var(--adm-env); }
+.bo-env-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--adm-env); }
+
+/* Stránka */
+.bo-page { padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px; }
+
+.bo-page-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.bo-page-title { flex: 1; min-width: 260px; }
+.bo-body .bo-page-title h1 { margin: 0; font-size: 22px; font-weight: 500; color: var(--adm-ink); line-height: 1.3; }
+.bo-page-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.bo-crumbs { font-size: 12.5px; color: var(--adm-muted); margin-bottom: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+.bo-body .bo-crumbs a { color: var(--adm-muted); text-decoration: none; }
+.bo-body .bo-crumbs a:hover { color: var(--adm-primary); text-decoration: underline; }
+
+.bo-card {
+	background: var(--adm-surface);
+	border: 1px solid var(--adm-line);
+	border-radius: var(--adm-radius);
+	box-shadow: 0 1px 2px rgba(30, 40, 55, .04);
+}
+
+.bo-card-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--adm-line-soft); }
+.bo-body .bo-card-head h2 { margin: 0; font-size: 15px; font-weight: 500; color: var(--adm-ink); flex: 1; }
+.bo-card-body { padding: 18px; }
+
+.bo-grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+
+.bo-stat { padding: 16px 18px; }
+.bo-stat-label { font-size: 12.5px; color: var(--adm-muted); }
+.bo-stat-value { font-size: 28px; font-weight: 500; color: var(--adm-ink); margin-top: 4px; }
+
+.bo-tabs { display: flex; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--adm-line); overflow-x: auto; }
+
+.bo-body .bo-tab {
+	display: inline-flex;
+	align-items: center;
+	height: 44px;
+	padding: 0 12px;
+	color: var(--adm-muted);
+	text-decoration: none;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+	white-space: nowrap;
+}
+
+.bo-body .bo-tab:hover { color: var(--adm-ink); }
+.bo-body .bo-tab.is-active { color: var(--adm-primary); border-bottom-color: var(--adm-primary); font-weight: 500; }
+
+/* Tabulka */
+.bo-table { width: 100%; border-collapse: collapse; }
+.bo-table th {
+	background: var(--adm-surface-2);
+	text-align: left;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--adm-muted);
+	padding: 0 14px;
+	height: 36px;
+	border-bottom: 1px solid var(--adm-line);
+	white-space: nowrap;
+}
+.bo-table td { padding: 10px 14px; border-bottom: 1px solid var(--adm-line-soft); font-size: 13.5px; }
+.bo-table tbody tr:last-child td { border-bottom: 0; }
+.bo-table tbody tr:hover td { background: #faf8fc; }
+.bo-table-wrap { overflow-x: auto; }
+
+/* Zprávy */
+.bo-flashes { display: flex; flex-direction: column; gap: 8px; }
+
+.bo-flash {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px 10px 14px;
+	border-radius: var(--adm-radius-sm);
+	background: var(--adm-info-soft);
+	color: var(--adm-info);
+	border: 1px solid currentColor;
+	border-color: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.bo-flash span { flex: 1; }
+.bo-flash-success { background: var(--adm-ok-soft); color: var(--adm-ok); }
+.bo-flash-warning { background: var(--adm-warn-soft); color: var(--adm-warn); }
+.bo-flash-error, .bo-flash-danger { background: var(--adm-danger-soft); color: var(--adm-danger); }
+
+.bo-flash-close { border: 0; background: none; color: inherit; cursor: pointer; padding: 4px; display: flex; border-radius: 3px; }
+.bo-flash-close:hover { background: rgba(0, 0, 0, .06); }
+
+/* Formulář (nativní stránky) */
+.bo-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.bo-field label { font-size: 13px; font-weight: 500; color: var(--adm-text-2); }
+.bo-input {
+	height: 38px;
+	padding: 0 10px;
+	border: 1px solid #cfd5de;
+	border-radius: var(--adm-radius-sm);
+	font: 14px var(--adm-font);
+	color: var(--adm-ink);
+	background: #fff;
+	box-sizing: border-box;
+	width: 100%;
+}
+.bo-input:focus { outline: 2px solid var(--adm-primary); outline-offset: -1px; border-color: var(--adm-primary); }
+
+/* Most: obsah starého adminu (Bootstrap 4 + AdminLTE) uvnitř karty */
+.bo-legacy-card > .bo-card-body { padding: 16px; overflow-x: auto; }
+.bo-legacy-labels p { margin: 0; color: var(--adm-muted); }
+.bo-legacy .bo-page-actions a { text-decoration: none; }
+.bo-legacy .bo-page-actions .btn { margin: 0; }
+.bo-legacy .card { box-shadow: none; }
+
+/* Sbalené menu */
+.bo-side-collapsed .bo-side { width: 64px; }
+.bo-side-collapsed .bo-brand-text,
+.bo-side-collapsed .bo-nav-group,
+.bo-side-collapsed .bo-nav-a span { display: none; }
+.bo-side-collapsed .bo-nav-a { justify-content: center; padding: 0; }
+.bo-side-collapsed .bo-brand { justify-content: center; padding: 0; }
+
+@media (max-width: 960px) {
+	.bo-side { position: fixed; left: 0; top: 0; z-index: 40; transform: translateX(-100%); transition: transform .15s; box-shadow: 0 0 24px rgba(0, 0, 0, .15); }
+	.bo-side-open .bo-side { transform: none; }
+	.bo-side-collapsed .bo-side { width: var(--adm-side-w); }
+	.bo-hide-sm { display: none !important; }
+	.bo-search { width: auto; flex: 1; }
+	.bo-search kbd { display: none; }
+	.bo-page { padding: 16px 16px 32px; }
+	.bo-top { padding: 0 12px; gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.bo-side { transition: none; }
+}
+
+/* Přihlášení */
+.bo-login { min-height: calc(100vh - 3px); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+.bo-login-card { width: 100%; max-width: 380px; }
+.bo-login-card .bo-card-body { padding: 28px; }
+.bo-body .bo-login-title { margin: 0; font-size: 20px; font-weight: 500; color: var(--adm-ink); }
+.bo-login-sub { margin: 4px 0 20px; color: var(--adm-muted); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.bo-login .bo-flash { margin-bottom: 14px; }
+.bo-body .bo-btn-block { width: 100%; justify-content: center; }
+
+/* Pomocné */
+.bo-muted { color: var(--adm-muted); }
+.bo-mono { font-family: var(--adm-mono); font-size: 12.5px; }
+.bo-row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.bo-form-actions { display: flex; gap: 8px; margin-top: 8px; }
+.bo-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 20px; }
+.bo-check { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.bo-empty { padding: 32px 18px; text-align: center; color: var(--adm-muted); }
+textarea.bo-input { height: auto; min-height: 90px; padding: 8px 10px; }
+.bo-field-error { color: var(--adm-danger); font-size: 12.5px; }

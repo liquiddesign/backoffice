@@ -1,0 +1,35 @@
+{block content}
+	<div class="bo-grid-cards">
+		<section class="bo-card bo-stat">
+			<div class="bo-stat-label">Neobchodní dny v evidenci</div>
+			<div class="bo-stat-value">{$holidayCount}</div>
+		</section>
+		<section class="bo-card bo-stat">
+			<div class="bo-stat-label">Nejbližší neobchodní den</div>
+			<div class="bo-stat-value">{if $upcoming}{(reset($upcoming))->date|date:'j. n.'}{else}—{/if}</div>
+		</section>
+		<section class="bo-card bo-stat">
+			<div class="bo-stat-label">Stav balíku</div>
+			<div class="bo-stat-value"><span class="bo-pill bo-pill-warn">0.x · shell</span></div>
+		</section>
+	</div>
+
+	<section class="bo-card">
+		<div class="bo-card-head">
+			<h2>Nejbližší neobchodní dny</h2>
+			<a n:href="Holiday:default">Všechny</a>
+		</div>
+		<div class="bo-table-wrap" n:if="$upcoming">
+			<table class="bo-table">
+				<thead><tr><th>Datum</th><th>Název</th></tr></thead>
+				<tbody>
+					<tr n:foreach="$upcoming as $holiday">
+						<td>{$holiday->date|date:'j. n. Y'}</td>
+						<td>{$holiday->name}</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div n:if="!$upcoming" class="bo-empty">Žádné nadcházející neobchodní dny.</div>
+	</section>
+{/block}

@@ -1,0 +1,98 @@
+{varType Closure $shellFactory}
+{var Backoffice\Shell\ShellView $shell = $shellFactory()}
+{var ?string $nonce = $cspNonce ?? null}
+{var ?string $envLabel = $shell->config->environmentLabel()}
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>{if $shell->title}{$shell->title} · {/if}{$shell->config->title}</title>
+	{if $legacyHead ?? null}{include $legacyHead}{/if}
+	<link rel="stylesheet" href="{$shell->cssHref}">
+	{block head}{/block}
+</head>
+<body n:class="bo-body, $shell->legacy ? bo-legacy, $envLabel ? 'bo-env-' . $shell->config->environment">
+	<div n:if="$envLabel" class="bo-env-stripe"></div>
+	<div class="bo-app" data-bo-app>
+		<aside class="bo-side" id="bo-side" aria-label="Hlavní menu">
+			<a class="bo-brand" href="{$shell->dashboardHref ?? '#'}">
+				<span class="bo-brand-mark">{Backoffice\Shell\Icons::get('logo', 20)}</span>
+				<span class="bo-brand-text">
+					<strong>{$shell->config->title}</strong>
+					<small n:if="$shell->config->subtitle">{$shell->config->subtitle}</small>
+				</span>
+			</a>
+			<nav class="bo-nav">
+				{foreach $shell->navigation as $group}
+					<div class="bo-nav-group">{$group->title}</div>
+					{foreach $group->items as $item}
+						<a n:class="bo-nav-a, $item->active ? is-active" href="{plink $item->link}" n:attr="aria-current: $item->active ? page">
+							{Backoffice\Shell\Icons::get($item->icon ?? $group->icon)}
+							<span>{$item->label}</span>
+						</a>
+					{/foreach}
+				{/foreach}
+			</nav>
+		</aside>
+
+		<div class="bo-main">
+			<header class="bo-top">
+				<button type="button" class="bo-btn bo-btn-ghost bo-btn-icon" data-bo-toggle-side aria-controls="bo-side" aria-label="Sbalit menu">
+					{Backoffice\Shell\Icons::get('menu')}
+				</button>
+				<button type="button" class="bo-search" disabled title="Hledání připravujeme">
+					{Backoffice\Shell\Icons::get('search', 16)}
+					<span>Hledat…</span>
+					<kbd class="bo-kbd">Ctrl K</kbd>
+				</button>
+				<span n:if="$envLabel" class="bo-pill bo-env-pill"><span class="bo-env-dot"></span>{$envLabel}</span>
+				<span class="bo-spacer"></span>
+				<a n:if="$shell->config->webUrl" class="bo-btn bo-btn-ghost bo-hide-sm" href="{$shell->config->webUrl}" target="_blank" rel="noopener">
+					{Backoffice\Shell\Icons::get('external', 16)} Web
+				</a>
+				<span class="bo-user" n:if="$shell->userName">
+					<span class="bo-avatar" aria-hidden="true">{$shell->userInitials()}</span>
+					<span class="bo-hide-sm">{$shell->userName}</span>
+				</span>
+				<a n:if="$shell->signOutHref" class="bo-btn bo-btn-ghost bo-btn-icon" href="{$shell->signOutHref}" aria-label="Odhlásit" title="Odhlásit">
+					{Backoffice\Shell\Icons::get('logout')}
+				</a>
+			</header>
+
+			<main class="bo-page" id="bo-content">
+				<div class="bo-page-head">
+					<div class="bo-page-title">
+						<nav n:if="$shell->breadcrumbs" class="bo-crumbs" aria-label="Drobečková navigace">
+							{foreach $shell->breadcrumbs as $crumb}
+								{if $crumb['href'] && !$iterator->isLast()}<a href="{$crumb['href']}">{$crumb['label']}</a>{else}<span>{$crumb['label']}</span>{/if}
+								<span n:if="!$iterator->isLast()" class="bo-crumb-sep" aria-hidden="true">/</span>
+							{/foreach}
+						</nav>
+						<h1 n:if="$shell->title">{$shell->title}</h1>
+					</div>
+					<div n:if="$shell->buttons" class="bo-page-actions">
+						{foreach $shell->buttons as $button}
+							{if is_string($button)}{$button|noescape}{else}{$button}{/if}
+						{/foreach}
+					</div>
+				</div>
+
+				<div n:if="$flashes" class="bo-flashes" role="status">
+					<div n:foreach="$flashes as $flash" class="bo-flash bo-flash-{$flash->type}">
+						<span>{$flash->message}</span>
+						<button type="button" class="bo-flash-close" data-bo-dismiss aria-label="Zavřít">{Backoffice\Shell\Icons::get('close', 14)}</button>
+					</div>
+				</div>
+
+				{include content}
+			</main>
+		</div>
+	</div>
+
+	<script src="{$shell->jsHref}" n:attr="nonce: $nonce" defer></script>
+	{if $legacyFoot ?? null}{include $legacyFoot}{/if}
+	{ifset scripts}{include scripts}{/ifset}
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+	"name": "liquiddesign/backoffice-playground",
+	"description": "Ukázková aplikace pro vývoj liquiddesign/backoffice",
+	"type": "project",
+	"license": "MIT",
+	"repositories": [
+		{
+			"type": "path",
+			"url": "..",
+			"options": {
+				"symlink": true
+			}
+		}
+	],
+	"require": {
+		"php": ">=8.2",
+		"liquiddesign/backoffice": "@dev",
+		"liquiddesign/storm": "~2.0",
+		"liquiddesign/migrator": "~1.0",
+		"nette/application": "^3.2",
+		"nette/bootstrap": "^3.2",
+		"nette/di": "^3.1",
+		"nette/forms": "^3.1",
+		"nette/http": "^3.2",
+		"nette/security": "^3.1",
+		"latte/latte": "^3.0",
+		"tracy/tracy": "^2.10"
+	},
+	"autoload": {
+		"psr-4": {
+			"Playground\\": "app/"
+		}
+	},
+	"scripts": {
+		"sync-database": "Migrator\\Scripts::syncDatabase Playground\\Bootstrap"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		},
+		"sort-packages": true
+	},
+	"minimum-stability": "dev",
+	"prefer-stable": true
+}
