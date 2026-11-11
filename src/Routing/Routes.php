@@ -17,7 +17,11 @@ final class Routes
 {
 	public static function add(RouteList $router, string $prefix): void
 	{
-		$prefix = \trim($prefix, '/');
-		$router->addRoute($prefix . '/_backoffice/<file .+>', 'Backoffice:Asset:default');
+		$router->addRoute(self::mask($prefix), 'Backoffice:Asset:default');
+	}
+
+	public static function mask(string $prefix): string
+	{
+		return \trim($prefix, '/') . '/_backoffice/<file .+>';
 	}
 }

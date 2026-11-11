@@ -4,15 +4,23 @@ declare(strict_types=1);
 
 namespace Backoffice\DI;
 
+use Backoffice\Bridge\LegacyAdminAccessChecker;
+use Backoffice\Bridge\LegacyBridge;
+use Backoffice\Routing\Routes;
 use Backoffice\Security\AccessChecker;
 use Backoffice\Security\UserAccessChecker;
 use Backoffice\Shell\Navigation;
 use Backoffice\Shell\ShellConfig;
 use Backoffice\Shell\ShellContext;
 use Backoffice\UI\AssetPresenter;
+use Nette\Application\Application;
 use Nette\Application\IPresenterFactory;
 use Nette\DI\CompilerExtension;
+use Nette\Application\Routers\Route;
+use Nette\Application\Routers\RouteList;
 use Nette\DI\Definitions\ServiceDefinition;
+use Nette\DI\Definitions\Statement;
+use Nette\Routing\Router;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 
@@ -30,13 +38,15 @@ use Nette\Schema\Schema;
  *     webUrl: https://www.pse.cz
  *     signInLink: ':Admin:Login:default'
  *     signOutLink: 'logout!'
+ *     routePrefix: administrace-pse   # routa pro assety balíku se přidá na začátek routeru sama
  *     navigation: %adminMenu%     # stejný formát jako admin: menu: z liquiddesign/admin
  *     bridge:
+ *         enabled: true           # staré presentery liquiddesign/admin v novém shellu
  *         head: %appDir%/Admin/templates/legacyHead.latte
  *         foot: %appDir%/Admin/templates/legacyFoot.latte
  * ```
  *
- * Projekt si dál přidá routy: Backoffice\Routing\Routes::add($router, 'administrace').
+ * Bez routePrefix si projekt přidá routy sám: Backoffice\Routing\Routes::add($router, 'administrace').
  */
 final class BackofficeExtension extends CompilerExtension
 {
@@ -50,8 +60,10 @@ final class BackofficeExtension extends CompilerExtension
 			'signInLink' => Expect::string(':Admin:Login:default'),
 			'signOutLink' => Expect::string()->nullable(),
 			'dashboardLink' => Expect::string()->nullable(),
+			'routePrefix' => Expect::string()->nullable(),
 			'navigation' => Expect::array()->default([]),
 			'bridge' => Expect::structure([
+				'enabled' => Expect::bool(false),
 				'head' => Expect::string()->nullable(),
 				'foot' => Expect::string()->nullable(),
 			]),
@@ -85,16 +97,43 @@ final class BackofficeExtension extends CompilerExtension
 
 		$builder->addDefinition($this->prefix('assetPresenter'))
 			->setFactory(AssetPresenter::class);
+
+		if ($config->bridge->enabled) {
+			$builder->addDefinition($this->prefix('legacyBridge'))
+				->setFactory(LegacyBridge::class);
+		}
 	}
 
 	public function beforeCompile(): void
 	{
 		$builder = $this->getContainerBuilder();
 
-		// Výchozí oprávnění jen tehdy, když si projekt nedodal vlastní (PSE: most na Admin\Administrator).
+		/** @var \stdClass $config */
+		$config = $this->getConfig();
+
+		// Oprávnění: vlastní služba projektu má přednost; s mostem se bere starý admin, jinak Nette User.
 		if ($builder->findByType(AccessChecker::class) === []) {
+			$legacy = $config->bridge->enabled && $builder->findByType('Admin\Administrator') !== [];
 			$builder->addDefinition($this->prefix('accessChecker'))
-				->setFactory(UserAccessChecker::class);
+				->setFactory($legacy ? LegacyAdminAccessChecker::class : UserAccessChecker::class);
+		}
+
+		if ($config->bridge->enabled) {
+			$application = $builder->getDefinitionByType(Application::class);
+
+			if ($application instanceof ServiceDefinition) {
+				$application->addSetup('$onPresenter[]', [[$this->prefix('@legacyBridge'), 'onPresenter']]);
+			}
+		}
+
+		if ($config->routePrefix !== null) {
+			$router = $builder->getDefinitionByType(Router::class);
+
+			if (!$router instanceof ServiceDefinition || !\is_a((string) $router->getType(), RouteList::class, true)) {
+				throw new \Nette\DI\InvalidConfigurationException('backoffice.routePrefix potřebuje router typu ' . RouteList::class . '; jinak routu přidejte sami přes ' . Routes::class . '::add().');
+			}
+
+			$router->addSetup('prepend', [new Statement(Route::class, [Routes::mask($config->routePrefix), 'Backoffice:Asset:default'])]);
 		}
 
 		$presenterFactory = $builder->getDefinitionByType(IPresenterFactory::class);

@@ -38,6 +38,7 @@ storm:
 			primaryKeyGenerator: StORM\DIConnection::generateUuid
 
 backoffice:
+	routePrefix: admin
 	title: Administrace
 	subtitle: Playground
 	environment: dev
