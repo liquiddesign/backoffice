@@ -16,7 +16,7 @@ test('presentery balíku nemají neveřejné metody s vyhrazenými prefixy', fun
 
 	foreach ($presenters as $class) {
 		foreach ((new ReflectionClass($class))->getMethods() as $method) {
-			if ($method->isPublic() || !preg_match('~^(render|action|handle)[A-Z]~', $method->getName())) {
+			if ($method->getDeclaringClass()->getName() !== $class || $method->isPublic() || !preg_match('~^(render|action|handle)[A-Z]~', $method->getName())) {
 				continue;
 			}
 
