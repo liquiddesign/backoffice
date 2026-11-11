@@ -1,6 +1,6 @@
 # Deklarativní agendy — API
 
-Stav: etapa 0 (kostra). Plán etap: [agendy-plan.md](agendy-plan.md).
+Stav: etapa 1 (seznam, formulář, ukládání, mazání). Plán etap: [agendy-plan.md](agendy-plan.md).
 
 ## Agenda
 
@@ -89,4 +89,21 @@ Sloupec: `->sortable()`, `->searchable()` (etapa 2), `->link()` (odkaz na detail
 
 `section(title)`, `text`, `textarea`, `integer`, `checkbox`, `select(items)`, `date`,
 `localeText`, `localeTextarea`. Pole: `->required()`, `->description()`, `->items()`.
-V etapě 0 jen popis — detail ukazuje náhled hodnot; formulář a ukládání přijdou v etapě 1.
+
+- jazyková pole: kontejner `name[cs]`, `name[en]` vedle sebe; povinný je jen hlavní (první) jazyk
+- datum: `<input type="date">`, ukládá se `RRRR-MM-DD`
+- prázdný text u sloupce, který smí být `NULL`, se uloží jako `NULL`
+- tlačítka „Uložit“ (zůstane na detailu) a „Uložit a zavřít“; Ctrl S = Uložit
+- lišta dole hlásí neuložené změny, při odchodu se stránkou se změnami se prohlížeč zeptá
+- chyby se ukazují u polí, nahoře souhrnná zpráva
+
+## Mazání
+
+Tlačítko „Smazat“ v řádku seznamu posílá POST (signál `delete!` s `#[Requires(methods: 'POST', sameOrigin: true)]`)
+a ptá se na potvrzení. Oprávnění jako pro úpravu (`…:detail`).
+
+## Log změn
+
+`Backoffice\Security\ChangeLogger`. S mostem `LegacyChangeLogger` zapisuje do `admin_changelog` stejně
+jako starý admin: `entity` = název agendy, `type` = `new` / `detail` / `delete`, `objectId`, `user` = login.
+Bez mostu `NullChangeLogger`; projekt může dodat vlastní službu.
