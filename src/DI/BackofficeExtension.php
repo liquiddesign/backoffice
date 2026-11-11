@@ -113,9 +113,16 @@ final class BackofficeExtension extends CompilerExtension
 
 		// Oprávnění: vlastní služba projektu má přednost; s mostem se bere starý admin, jinak Nette User.
 		if ($builder->findByType(AccessChecker::class) === []) {
-			$legacy = $config->bridge->enabled && $builder->findByType('Admin\Administrator') !== [];
-			$builder->addDefinition($this->prefix('accessChecker'))
-				->setFactory($legacy ? LegacyAdminAccessChecker::class : UserAccessChecker::class);
+			// Starý admin registruje Admin\Administrator jako admin.administrator bez autowiringu,
+			// takže se službě předává jménem.
+			$administrators = $config->bridge->enabled ? \array_keys($builder->findByType('Admin\Administrator')) : [];
+			$definition = $builder->addDefinition($this->prefix('accessChecker'));
+
+			if ($administrators !== []) {
+				$definition->setFactory(LegacyAdminAccessChecker::class, ['@' . $administrators[0]]);
+			} else {
+				$definition->setFactory(UserAccessChecker::class);
+			}
 		}
 
 		if ($config->bridge->enabled) {
