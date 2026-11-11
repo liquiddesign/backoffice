@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Backoffice\Resource\Form;
 
+use Nette\Utils\Arrays;
+
 /**
  * Pole formuláře agendy. Nette formulář z něj sestaví FormControl (etapa 1).
  */
@@ -51,7 +53,6 @@ final class Field
 
 	/**
 	 * Volby u výběru.
-	 *
 	 * @param array<string|int, string> $items
 	 */
 	public function items(array $items): self
@@ -81,6 +82,6 @@ final class Field
 
 	public function isLocalized(): bool
 	{
-		return \in_array($this->type, [self::TYPE_LOCALE_TEXT, self::TYPE_LOCALE_TEXTAREA], true);
+		return Arrays::contains([self::TYPE_LOCALE_TEXT, self::TYPE_LOCALE_TEXTAREA], $this->type);
 	}
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Backoffice\Resource\List;
 
+use Nette\Utils\Arrays;
 use Nette\Utils\Strings;
 
 /**
@@ -44,7 +45,7 @@ final class ListBuilder
 	{
 		$direction = Strings::upper($direction);
 
-		if (!\in_array($direction, ['ASC', 'DESC'], true)) {
+		if (!Arrays::contains(['ASC', 'DESC'], $direction)) {
 			throw new \InvalidArgumentException("Směr řazení musí být ASC nebo DESC, ne '$direction'.");
 		}
 

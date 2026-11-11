@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Backoffice\Resource;
 
+use Nette\Utils\Arrays;
 use Nette\Utils\Strings;
 
 /**
@@ -51,7 +52,7 @@ final class ResourceRegistry
 
 	public function isSwitched(string $slug): bool
 	{
-		return \in_array($slug, $this->switched, true);
+		return Arrays::contains($this->switched, $slug);
 	}
 
 	/**

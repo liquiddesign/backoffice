@@ -15,20 +15,16 @@ abstract class ResourceDefinition
 {
 	private ?Meta $meta = null;
 
-	abstract public function meta(Meta $meta): void;
-
-	abstract public function list(ListBuilder $list): void;
-
-	abstract public function form(FormBuilder $form): void;
-
 	final public function getMeta(): Meta
 	{
-		if ($this->meta === null) {
-			$this->meta = new Meta();
-			$this->meta($this->meta);
+		if ($this->meta !== null) {
+			return $this->meta;
 		}
 
-		return $this->meta;
+		$meta = new Meta();
+		$this->meta($meta);
+
+		return $this->meta = $meta;
 	}
 
 	final public function buildList(): ListBuilder
@@ -46,4 +42,10 @@ abstract class ResourceDefinition
 
 		return $builder;
 	}
+
+	abstract public function meta(Meta $meta): void;
+
+	abstract public function list(ListBuilder $list): void;
+
+	abstract public function form(FormBuilder $form): void;
 }

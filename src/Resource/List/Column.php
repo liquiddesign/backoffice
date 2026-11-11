@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Backoffice\Resource\List;
 
+use Nette\Utils\Arrays;
+use Nette\Utils\Strings;
+
 /**
  * Sloupec seznamu. Fluent nastavení, vykreslení obstará ListControl podle typu.
  */
@@ -72,9 +75,9 @@ class Column
 	 */
 	public function defaultSort(string $direction = 'ASC'): static
 	{
-		$direction = \Nette\Utils\Strings::upper($direction);
+		$direction = Strings::upper($direction);
 
-		if (!\in_array($direction, ['ASC', 'DESC'], true)) {
+		if (!Arrays::contains(['ASC', 'DESC'], $direction)) {
 			throw new \InvalidArgumentException("Směr řazení musí být ASC nebo DESC, ne '$direction'.");
 		}
 

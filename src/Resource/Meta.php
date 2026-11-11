@@ -68,7 +68,6 @@ final class Meta
 	/**
 	 * Starý presenter, který agenda nahrazuje (':Stock:Admin:Holiday'). Agenda od něj přebírá
 	 * oprávnění z admin_permission a po přepnutí (backoffice: switched:) i položku menu a adresu.
-	 *
 	 * @param string|null $idParameter jméno parametru se záznamem ve staré adrese detailu (?holiday=…)
 	 */
 	public function replaces(string $presenter, ?string $idParameter = null): self

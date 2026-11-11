@@ -95,7 +95,6 @@ final class ResourcePresenter extends BackofficePresenter
 
 	/**
 	 * Jazykové sloupce entity — pro sloupec „Jazyky“ (které jazyky má záznam vyplněné).
-	 *
 	 * @return list<string>
 	 */
 	private function localizedColumns(ResourceDefinition $definition): array
@@ -108,9 +107,11 @@ final class ResourcePresenter extends BackofficePresenter
 				continue;
 			}
 
-			if ($structure->getColumn($column->name)?->hasMutations()) {
-				$names[] = $column->name;
+			if (!$structure->getColumn($column->name)?->hasMutations()) {
+				continue;
 			}
+
+			$names[] = $column->name;
 		}
 
 		return $names;
