@@ -23,6 +23,8 @@ final class Routes
 
 	public static function mask(string $prefix): string
 	{
-		return Strings::trim($prefix, '/') . '/_backoffice/<file .+>';
+		// Soubor jde v query (?file=backoffice.css): projekty mají v .htaccess pravidlo, které
+		// adresy s příponou .css/.js obslouží rovnou z disku a do index.php je nepustí.
+		return Strings::trim($prefix, '/') . '/_backoffice';
 	}
 }
