@@ -18,8 +18,20 @@ abstract class BackendPresenter extends \Nette\Application\UI\Presenter
 
 namespace Admin\DB;
 
+/**
+ * @extends \StORM\Repository<\StORM\Entity>
+ */
+class ChangelogRepository extends \StORM\Repository
+{
+}
+
 class Administrator implements \Nette\Security\IIdentity
 {
+	public function getAccount(): ?\Security\DB\Account
+	{
+		return null;
+	}
+
 	public ?string $fullName = null;
 
 	public ?string $login = null;
@@ -36,4 +48,11 @@ class Administrator implements \Nette\Security\IIdentity
 	{
 		return [];
 	}
+}
+
+namespace Security\DB;
+
+class Account
+{
+	public string $login = '';
 }

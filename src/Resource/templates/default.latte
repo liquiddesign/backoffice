@@ -10,6 +10,7 @@
 				<thead>
 					<tr>
 						<th n:foreach="$list->getColumns() as $column">{$column->label}</th>
+						<th class="bo-th-actions"><span class="bo-sr-only">Akce</span></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -34,6 +35,14 @@
 									{$value}
 								{/if}
 							{/if}
+						</td>
+						<td class="bo-td-actions">
+							<div class="bo-row-actions">
+								<a class="bo-btn bo-btn-ghost" n:href="edit id => $row->getPK()">Upravit</a>
+								<form method="post" action="{link delete! id => $row->getPK()}" data-bo-confirm="Smazat záznam? Akci nelze vrátit.">
+									<button type="submit" class="bo-btn bo-btn-ghost bo-btn-danger-text">Smazat</button>
+								</form>
+							</div>
 						</td>
 					</tr>
 				</tbody>

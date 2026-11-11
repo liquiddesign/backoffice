@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Backoffice\DI;
 
 use Backoffice\Bridge\LegacyAdminAccessChecker;
+use Backoffice\Bridge\LegacyChangeLogger;
 use Backoffice\Bridge\LegacyBridge;
+use Backoffice\Resource\Form\FormFactory;
 use Backoffice\Resource\ResourceDefinition;
 use Backoffice\Resource\ResourceRegistry;
 use Backoffice\Routing\Routes;
 use Backoffice\Security\AccessChecker;
+use Backoffice\Security\ChangeLogger;
+use Backoffice\Security\NullChangeLogger;
 use Backoffice\Security\UserAccessChecker;
 use Backoffice\Shell\Navigation;
 use Backoffice\Shell\ShellConfig;
@@ -107,6 +111,9 @@ final class BackofficeExtension extends CompilerExtension
 		$builder->addDefinition($this->prefix('resourcePresenter'))
 			->setFactory(ResourcePresenter::class);
 
+		$builder->addDefinition($this->prefix('formFactory'))
+			->setFactory(FormFactory::class);
+
 		$builder->addDefinition($this->prefix('resources'))
 			->setFactory(ResourceRegistry::class, [new Statement('typed', [ResourceDefinition::class]), $config->switched]);
 
@@ -126,6 +133,7 @@ final class BackofficeExtension extends CompilerExtension
 		$config = $this->getConfig();
 
 		$this->registerAccessChecker($config->bridge->enabled);
+		$this->registerChangeLogger($config->bridge->enabled);
 
 		if ($config->bridge->enabled) {
 			$application = $builder->getDefinitionByType(Application::class);
@@ -173,6 +181,34 @@ final class BackofficeExtension extends CompilerExtension
 		}
 
 		$definition->setFactory(LegacyAdminAccessChecker::class, ['@' . $administrators[0]]);
+	}
+
+	/**
+	 * Log změn: vlastní služba projektu má přednost; s mostem se píše do admin_changelog starého adminu.
+	 */
+	private function registerChangeLogger(bool $bridge): void
+	{
+		$builder = $this->getContainerBuilder();
+
+		if ($builder->findByType(ChangeLogger::class) !== []) {
+			return;
+		}
+
+		/** @var class-string $administratorType */
+		$administratorType = 'Admin\Administrator';
+		/** @var class-string $changelogType */
+		$changelogType = 'Admin\DB\ChangelogRepository';
+		$administrators = $bridge ? \array_keys($builder->findByType($administratorType)) : [];
+		$changelogs = $bridge ? \array_keys($builder->findByType($changelogType)) : [];
+		$definition = $builder->addDefinition($this->prefix('changeLogger'));
+
+		if ($administrators === [] || $changelogs === []) {
+			$definition->setFactory(NullChangeLogger::class);
+
+			return;
+		}
+
+		$definition->setFactory(LegacyChangeLogger::class, ['@' . $administrators[0], '@' . $changelogs[0]]);
 	}
 
 	private function prependRoutes(string $prefix): void

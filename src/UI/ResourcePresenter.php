@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace Backoffice\UI;
 
+use Backoffice\Resource\Form\FormFactory;
 use Backoffice\Resource\List\Column;
 use Backoffice\Resource\ResourceDefinition;
 use Backoffice\Resource\ResourceRegistry;
+use Backoffice\Security\ChangeLogger;
 use Nette\Application\Attributes\Persistent;
+use Nette\Application\Attributes\Requires;
+use Nette\Application\UI\Form;
 use Nette\DI\Attributes\Inject;
 use StORM\Entity;
 
 /**
- * Jeden presenter pro všechny deklarativní agendy: <prefix>/r/<agenda>[/<akce>][/<id>].
- *
- * Etapa 0: seznam jen ke čtení. Formulář (edit, new) a mazání přijdou v etapě 1.
+ * Jeden presenter pro všechny deklarativní agendy: <prefix>/r/<agenda>[/edit|new][/<id>].
  */
 final class ResourcePresenter extends BackofficePresenter
 {
@@ -24,7 +26,15 @@ final class ResourcePresenter extends BackofficePresenter
 	#[Inject]
 	public ResourceRegistry $registry;
 
+	#[Inject]
+	public FormFactory $formFactory;
+
+	#[Inject]
+	public ChangeLogger $changeLogger;
+
 	private ?ResourceDefinition $definition = null;
+
+	private ?Entity $entity = null;
 
 	public function checkRequirements(mixed $element): void
 	{
@@ -58,29 +68,102 @@ final class ResourcePresenter extends BackofficePresenter
 
 		$this->title = $meta->getTitle();
 		$this->breadcrumbs = [[$meta->getTitle()]];
+		$this->buttons = [$this->button('Nový: ' . $meta->getItemTitle(), 'new', icon: 'file')];
 
 		$this->template->list = $list;
 		$this->template->rows = $collection->toArray();
 		$this->template->total = $total;
 		$this->template->page = $page;
 		$this->template->pages = $pages;
-		$this->template->mutations = \array_keys($repository->getConnection()->getAvailableMutations());
+		$this->template->mutations = $this->mutations();
 		$this->template->localizedColumns = $this->localizedColumns($definition);
 		$this->template->setFile(__DIR__ . '/../Resource/templates/default.latte');
 	}
 
-	public function renderEdit(string $id): void
+	public function actionEdit(string $id): void
+	{
+		$this->entity = $this->getDefinition()->getMeta()->getRepository()->one($id) ?? $this->error('Záznam nenalezen.');
+
+		if ($this['form']->isSubmitted()) {
+			return;
+		}
+
+		$this['form']->setDefaults($this->formFactory->defaults($this->getDefinition()->buildForm(), $this->entity));
+	}
+
+	public function renderEdit(): void
 	{
 		$meta = $this->getDefinition()->getMeta();
-		$entity = $meta->getRepository()->one($id) ?? $this->error('Záznam nenalezen.');
 
-		$this->title = $this->entityTitle($entity);
+		$this->title = $this->entityTitle($this->getEntity());
 		$this->breadcrumbs = [[$meta->getTitle(), 'default'], [$this->title]];
-		$this->buttons = [$this->button('Zpět', 'default', variant: 'ghost')];
-		$this->template->fields = $this->getDefinition()->buildForm()->getFields();
-		$this->template->entity = $entity;
-		$this->template->mutations = \array_keys($meta->getRepository()->getConnection()->getAvailableMutations());
-		$this->template->setFile(__DIR__ . '/../Resource/templates/edit.latte');
+		$this->renderForm();
+	}
+
+	public function renderNew(): void
+	{
+		$meta = $this->getDefinition()->getMeta();
+
+		$this->title = 'Nový: ' . $meta->getItemTitle();
+		$this->breadcrumbs = [[$meta->getTitle(), 'default'], ['Nový záznam']];
+		$this->renderForm();
+	}
+
+	#[Requires(methods: 'POST', sameOrigin: true)]
+	public function handleDelete(string $id): void
+	{
+		$meta = $this->getDefinition()->getMeta();
+
+		if (!$this->shell->access->isAllowed($meta->permissionLink('edit'))) {
+			$this->error('Na mazání nemáte oprávnění.', 403);
+		}
+
+		$entity = $meta->getRepository()->one($id);
+
+		if ($entity !== null) {
+			$title = $this->entityTitle($entity);
+			$entity->delete();
+			$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_DELETE, $id);
+			$this->flashMessage("Smazáno: $title", 'success');
+		}
+
+		$this->redirect('default');
+	}
+
+	protected function createComponentForm(): Form
+	{
+		$definition = $this->getDefinition();
+		$form = $this->formFactory->create($definition->buildForm(), $this->mutations());
+
+		$form->onSuccess[] = function (Form $form, array $values) use ($definition): void {
+			$meta = $definition->getMeta();
+			$repository = $meta->getRepository();
+			$data = $this->formFactory->values($definition->buildForm(), $values, $repository->getStructure());
+
+			if ($this->entity !== null) {
+				$this->entity->update($data);
+				$entity = $this->entity;
+				$type = ChangeLogger::TYPE_DETAIL;
+			} else {
+				$entity = $repository->createOne($data);
+				$type = ChangeLogger::TYPE_NEW;
+			}
+
+			$this->changeLogger->log($meta->getTitle(), $type, (string) $entity->getPK());
+			$this->flashMessage('Uloženo', 'success');
+
+			if ($form->isSubmitted() === $form['saveClose']) {
+				$this->redirect('default');
+			}
+
+			$this->redirect('edit', ['id' => (string) $entity->getPK()]);
+		};
+
+		$form->onError[] = function (): void {
+			$this->flashMessage('Formulář obsahuje chyby — jsou vyznačené u polí.', 'error');
+		};
+
+		return $form;
 	}
 
 	protected function permissionLink(): string
@@ -88,9 +171,31 @@ final class ResourcePresenter extends BackofficePresenter
 		return $this->getDefinition()->getMeta()->permissionLink($this->getAction());
 	}
 
+	private function renderForm(): void
+	{
+		$this->buttons = [$this->button('Zpět na seznam', 'default', variant: 'ghost')];
+		$this->template->sections = $this->getDefinition()->buildForm()->getSections();
+		$this->template->mutations = $this->mutations();
+		$this->template->entity = $this->entity;
+		$this->template->setFile(__DIR__ . '/../Resource/templates/form.latte');
+	}
+
 	private function getDefinition(): ResourceDefinition
 	{
 		return $this->definition ?? throw new \LogicException('Agenda není načtená.');
+	}
+
+	private function getEntity(): Entity
+	{
+		return $this->entity ?? throw new \LogicException('Záznam není načtený.');
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function mutations(): array
+	{
+		return \array_keys($this->getDefinition()->getMeta()->getRepository()->getConnection()->getAvailableMutations());
 	}
 
 	/**
@@ -123,7 +228,7 @@ final class ResourcePresenter extends BackofficePresenter
 			if ($column->isLink()) {
 				$value = $entity->getValue($column->name);
 
-				return \is_scalar($value) ? (string) $value : (string) $entity->getPK();
+				return \is_scalar($value) && (string) $value !== '' ? (string) $value : (string) $entity->getPK();
 			}
 		}
 

@@ -62,4 +62,70 @@
 			root.classList.remove('bo-side-open');
 		}
 	});
+	// Potvrzení před odesláním (mazání).
+	document.addEventListener('submit', function (event) {
+		var form = event.target;
+
+		if (form instanceof HTMLFormElement && form.dataset.boConfirm && !window.confirm(form.dataset.boConfirm)) {
+			event.preventDefault();
+		}
+	}, true);
+
+	// Formulář agendy: neuložené změny, Ctrl S, varování při odchodu.
+	var form = document.querySelector('[data-bo-form]');
+
+	if (form) {
+		var savebar = form.querySelector('[data-bo-savebar]');
+		var label = form.querySelector('[data-bo-dirty-label]');
+		var dirty = false;
+		var submitting = false;
+
+		var markDirty = function () {
+			if (dirty) {
+				return;
+			}
+
+			dirty = true;
+
+			if (savebar) {
+				savebar.classList.add('is-dirty');
+			}
+
+			if (label) {
+				label.textContent = 'Neuložené změny';
+			}
+		};
+
+		form.addEventListener('input', markDirty);
+		form.addEventListener('change', markDirty);
+		form.addEventListener('submit', function () {
+			submitting = true;
+		});
+
+		window.addEventListener('beforeunload', function (event) {
+			if (dirty && !submitting) {
+				event.preventDefault();
+				event.returnValue = '';
+			}
+		});
+
+		var discard = form.querySelector('[data-bo-discard]');
+
+		if (discard) {
+			discard.addEventListener('click', function () {
+				dirty = false;
+			});
+		}
+
+		document.addEventListener('keydown', function (event) {
+			if ((event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S')) {
+				event.preventDefault();
+				var save = form.querySelector('[data-bo-save]');
+
+				if (save) {
+					form.requestSubmit(save);
+				}
+			}
+		});
+	}
 })();
