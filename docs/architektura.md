@@ -23,7 +23,7 @@ zůstane beze změny pro ostatní projekty.
 backoffice/
   src/
     Shell/          layout, navigace, drobečky, Ctrl K, notifikace, štítek prostředí
-    Security/       přihlášení, 2FA, role, oprávnění, changelog (nad stávajícími admin_* tabulkami)
+    Security/       rozhraní AccessChecker (přihlášení, oprávnění) — ve PSE most na starý admin
     Resource/       deklarativní agendy: ResourceDefinition, ListBuilder, FormBuilder, akce
     Form/           pole (jazykové varianty, rich text, výběr souboru, URL+SEO…)
     Files/          knihovna souborů (náhrada Responsive FileManageru)
@@ -77,14 +77,26 @@ Nové tabulky jen s prefixem `adm_`, migrace v balíku, projekt je pouští stá
 - **Ctrl K** — `SearchProvider` rozhraní; každá agenda může přidat zdroj (emise, novinky, stránky).
 - **Notifikace** — `NotificationProvider` (např. „Import selhal“, „Stránka čeká na publikaci“).
 - **Štítek prostředí** z `config/environments.neon` (DEV / TEST / STAGE; na produkci nic).
-- **Přihlášení** — stávající účty, Google 2FA, blokace po neúspěšných pokusech (`RateLimiter::recordFailedLogin`).
+- **Přihlášení a oprávnění** přes rozhraní `Backoffice\Security\AccessChecker` (přihlášen?, smí na
+  odkaz?, jméno do hlavičky). Výchozí `UserAccessChecker` pustí každého přihlášeného Nette uživatele
+  (playground). Projekt se starým adminem zaregistruje `Backoffice\Bridge\LegacyAdminAccessChecker`
+  — ten se ptá `Admin\Administrator::isAllowed`, takže platí tytéž účty, role, `admin_permission`
+  a Google 2FA jako dnes. Vlastní přihlašovací obrazovka v balíku přijde až s odchodem od starého adminu.
 
-### Most pro staré presentery
+### Most pro staré presentery (hotovo v 0.x)
 
-Starý `BackendPresenter` dostane v projektu trait `UseBackofficeShell`, který přepne layout na nový
-shell a mapuje pět slotů. Obsah agendy (AdminGrid, AdminForm) se vykreslí beze změny, jen dostane CSS
-nového vzhledu pro tabulky a formuláře. Výsledek: celý admin v novém vzhledu dřív, než se převede první
-agenda. Převedená agenda se pak přepne v navigaci na novou routu, stará URL přesměruje.
+Společný předek adminových presenterů v projektu dostane trait `Backoffice\Bridge\LegacyShell`.
+Ten v `$onStartup` přepne `layoutTemplate` na layout shellu a `contentTemplate` na
+`Bridge/templates/content.latte`; shell pak vezme `headerLabel` jako nadpis, `headerTree` jako
+drobečky, `displayButtons` do hlavičky a `tabs` + `displayControls` vykreslí v kartě. Obsah agendy
+(AdminGrid, AdminForm) zůstává beze změny. Assety starého adminu (jQuery, Bootstrap 4, polyfilly
+formulářů) si projekt vytáhne do souboru, který shell vloží do `<head>` (`bridge: head:`); skripty
+z konce starého layoutu do `bridge: foot:`. Třídy shellu mají prefix `bo-`, takže se s Bootstrapem nepřou.
+
+Převedená agenda se pak přepne v navigaci na novou routu, stará URL přesměruje.
+
+Assety balíku (`dist/`) vydává `Backoffice:Asset` přímo z vendoru — projekt přidá routu
+`Backoffice\Routing\Routes::add($router, '<prefix administrace>')` a nic nekopíruje.
 
 ## 4. Deklarativní agenda (Resource)
 
