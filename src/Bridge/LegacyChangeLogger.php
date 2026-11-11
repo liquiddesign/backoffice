@@ -13,10 +13,8 @@ use Backoffice\Security\ChangeLogger;
  */
 final class LegacyChangeLogger implements ChangeLogger
 {
-	public function __construct(
-		private readonly Administrator $admin,
-		private readonly ChangelogRepository $changelog,
-	) {
+	public function __construct(private readonly Administrator $admin, private readonly ChangelogRepository $changelog)
+	{
 	}
 
 	public function log(string $agenda, string $type, ?string $objectId): void

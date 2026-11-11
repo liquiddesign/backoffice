@@ -31,26 +31,18 @@ final class FormFactory
 
 		foreach ($builder->getFields() as $field) {
 			if ($field->isLocalized()) {
-				$container = $form->addContainer($field->name);
-
-				foreach ($mutations as $index => $mutation) {
-					$control = $field->type === Field::TYPE_LOCALE_TEXTAREA
-						? $container->addTextArea($mutation, $field->label)
-						: $container->addText($mutation, $field->label);
-
-					if ($field->isRequired() && $index === 0) {
-						$control->setRequired('Vyplňte pole ' . $field->label . ' (' . Strings::upper($mutation) . ').');
-					}
-				}
+				$this->addLocalized($form, $field, $mutations);
 
 				continue;
 			}
 
 			$control = $this->createControl($form, $field);
 
-			if ($field->isRequired() && $field->type !== Field::TYPE_CHECKBOX) {
-				$control->setRequired('Vyplňte pole ' . $field->label . '.');
+			if (!$field->isRequired() || $field->type === Field::TYPE_CHECKBOX) {
+				continue;
 			}
+
+			$control->setRequired('Vyplňte pole ' . $field->label . '.');
 		}
 
 		$form->addSubmit('save', 'Uložit');
@@ -61,7 +53,6 @@ final class FormFactory
 
 	/**
 	 * Výchozí hodnoty formuláře ze záznamu.
-	 *
 	 * @return array<string, mixed>
 	 */
 	public function defaults(FormBuilder $builder, Entity $entity): array
@@ -88,15 +79,15 @@ final class FormFactory
 
 	/**
 	 * Hodnoty z formuláře pro uložení: prázdný text u sloupce, který smí být NULL, se uloží jako NULL.
-	 *
 	 * @param array<string, mixed> $values
+	 * @param \StORM\Meta\Structure<\StORM\Entity> $structure
 	 * @return array<string, mixed>
 	 */
 	public function values(FormBuilder $builder, array $values, Structure $structure): array
 	{
 		$result = [];
 
-		foreach ($builder->getFields() as $name => $field) {
+		foreach (\array_keys($builder->getFields()) as $name) {
 			if (!\array_key_exists($name, $values)) {
 				continue;
 			}
@@ -122,31 +113,55 @@ final class FormFactory
 		return $result;
 	}
 
+	/**
+	 * @param list<string> $mutations
+	 */
+	private function addLocalized(Form $form, Field $field, array $mutations): void
+	{
+		$container = $form->addContainer($field->name);
+
+		foreach ($mutations as $index => $mutation) {
+			$control = $field->type === Field::TYPE_LOCALE_TEXTAREA
+				? $container->addTextArea($mutation, $field->label)
+				: $container->addText($mutation, $field->label);
+
+			if (!$field->isRequired() || $index !== 0) {
+				continue;
+			}
+
+			$control->setRequired('Vyplňte pole ' . $field->label . ' (' . Strings::upper($mutation) . ').');
+		}
+	}
+
 	private function createControl(Form $form, Field $field): BaseControl
 	{
-		switch ($field->type) {
-			case Field::TYPE_TEXTAREA:
-				return $form->addTextArea($field->name, $field->label);
-			case Field::TYPE_INTEGER:
-				return $form->addInteger($field->name, $field->label);
-			case Field::TYPE_CHECKBOX:
-				return $form->addCheckbox($field->name, $field->label);
-			case Field::TYPE_SELECT:
-				$select = $form->addSelect($field->name, $field->label, $field->getItems());
+		return match ($field->type) {
+			Field::TYPE_TEXTAREA => $form->addTextArea($field->name, $field->label),
+			Field::TYPE_INTEGER => $form->addInteger($field->name, $field->label),
+			Field::TYPE_CHECKBOX => $form->addCheckbox($field->name, $field->label),
+			Field::TYPE_SELECT => $this->createSelect($form, $field),
+			Field::TYPE_DATE => $this->createDate($form, $field),
+			default => $form->addText($field->name, $field->label),
+		};
+	}
 
-				if (!$field->isRequired()) {
-					$select->setPrompt('—');
-				}
+	private function createSelect(Form $form, Field $field): BaseControl
+	{
+		$select = $form->addSelect($field->name, $field->label, $field->getItems());
 
-				return $select;
-			case Field::TYPE_DATE:
-				$date = $form->addText($field->name, $field->label)->setHtmlType('date');
-				$date->addCondition(Form::Filled)
-					->addRule(Form::Pattern, 'Datum zadejte ve tvaru RRRR-MM-DD.', self::DATE_PATTERN);
-
-				return $date;
-			default:
-				return $form->addText($field->name, $field->label);
+		if (!$field->isRequired()) {
+			$select->setPrompt('—');
 		}
+
+		return $select;
+	}
+
+	private function createDate(Form $form, Field $field): BaseControl
+	{
+		$date = $form->addText($field->name, $field->label)->setHtmlType('date');
+		$date->addCondition(Form::Filled)
+			->addRule(Form::Pattern, 'Datum zadejte ve tvaru RRRR-MM-DD.', self::DATE_PATTERN);
+
+		return $date;
 	}
 }
