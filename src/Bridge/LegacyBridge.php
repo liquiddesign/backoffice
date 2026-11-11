@@ -67,6 +67,11 @@ final class LegacyBridge
 		if ($action === 'edit') {
 			$id = $meta->getLegacyIdParameter() !== null ? $presenter->getParameter($meta->getLegacyIdParameter()) : null;
 
+			// Starý admin mapuje parametr na entitu ještě před startupem (renderDetail(Holiday $holiday)).
+			if ($id instanceof \StORM\Entity) {
+				$id = $id->getPK();
+			}
+
 			if (!\is_scalar($id) || (string) $id === '') {
 				$action = 'default';
 			} else {
