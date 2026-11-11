@@ -12,6 +12,7 @@ use Nette\Application\Response;
 use Nette\Application\Responses\CallbackResponse;
 use Nette\Http\IRequest;
 use Nette\Http\IResponse;
+use Nette\Utils\Strings;
 
 /**
  * Vydává zkompilované assety balíku (dist/) přímo z vendoru. Projekt tak nic nekopíruje do své
@@ -38,7 +39,7 @@ final class AssetPresenter implements IPresenter
 
 		$root = \realpath(ShellContext::ASSETS_DIR);
 		$path = \realpath(ShellContext::ASSETS_DIR . '/' . $file);
-		$type = self::TYPES[\strtolower(\pathinfo($file, \PATHINFO_EXTENSION))] ?? null;
+		$type = self::TYPES[Strings::lower(\pathinfo($file, \PATHINFO_EXTENSION))] ?? null;
 
 		if ($root === false || $path === false || !\str_starts_with($path, $root . \DIRECTORY_SEPARATOR) || !\is_file($path) || $type === null) {
 			throw new BadRequestException('Asset not found.');

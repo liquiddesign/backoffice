@@ -64,9 +64,11 @@ final class Navigation
 				$items[] = new NavItem((string) $label, $link, $itemIcon, $active);
 			}
 
-			if ($items !== []) {
-				$groups[] = new NavGroup((string) $title, $items, $icon);
+			if ($items === []) {
+				continue;
 			}
+
+			$groups[] = new NavGroup((string) $title, $items, $icon);
 		}
 
 		return $groups;

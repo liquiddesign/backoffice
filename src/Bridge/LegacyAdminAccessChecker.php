@@ -39,7 +39,6 @@ final class LegacyAdminAccessChecker implements AccessChecker
 			return null;
 		}
 
-		/** @var \Admin\DB\Administrator|\Nette\Security\IIdentity $identity */
 		$fullName = $identity->fullName ?? null;
 
 		if (\is_string($fullName) && $fullName !== '') {

@@ -36,9 +36,11 @@ abstract class BackofficePresenter extends Presenter
 			$this->redirect($this->shell->config->signInLink, ['backlink' => $this->storeRequest()]);
 		}
 
-		if (!$this->shell->access->isAllowed(':' . $this->getName() . ':' . $this->getAction())) {
-			$this->error('Na tuto stránku nemáte oprávnění.', 403);
+		if ($this->shell->access->isAllowed(':' . $this->getName() . ':' . $this->getAction())) {
+			return;
 		}
+
+		$this->error('Na tuto stránku nemáte oprávnění.', 403);
 	}
 
 	/**

@@ -44,9 +44,10 @@ final class LegacyBridge
 
 	private function apply(Presenter $presenter): void
 	{
-		/** @var \Admin\BackendPresenter $presenter */
-		$presenter->layoutTemplate = ShellContext::LAYOUT;
-		$presenter->contentTemplate = self::CONTENT_TEMPLATE;
+		/** @var \Admin\BackendPresenter $legacy */
+		$legacy = $presenter;
+		$legacy->layoutTemplate = ShellContext::LAYOUT;
+		$legacy->contentTemplate = self::CONTENT_TEMPLATE;
 
 		/** @var \Nette\Bridges\ApplicationLatte\Template $template */
 		$template = $presenter->getTemplate();

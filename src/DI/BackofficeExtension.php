@@ -15,11 +15,12 @@ use Backoffice\Shell\ShellContext;
 use Backoffice\UI\AssetPresenter;
 use Nette\Application\Application;
 use Nette\Application\IPresenterFactory;
-use Nette\DI\CompilerExtension;
 use Nette\Application\Routers\Route;
 use Nette\Application\Routers\RouteList;
+use Nette\DI\CompilerExtension;
 use Nette\DI\Definitions\ServiceDefinition;
 use Nette\DI\Definitions\Statement;
+use Nette\DI\InvalidConfigurationException;
 use Nette\Routing\Router;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
@@ -34,14 +35,14 @@ use Nette\Schema\Schema;
  * backoffice:
  *     title: Administrace
  *     subtitle: Burza cenných papírů Praha
- *     environment: dev            # dev | test | stage | null (produkce = bez štítku)
+ *     environment: dev # dev | test | stage | null (produkce = bez štítku)
  *     webUrl: https://www.pse.cz
  *     signInLink: ':Admin:Login:default'
  *     signOutLink: 'logout!'
- *     routePrefix: administrace-pse   # routa pro assety balíku se přidá na začátek routeru sama
- *     navigation: %adminMenu%     # stejný formát jako admin: menu: z liquiddesign/admin
+ *     routePrefix: administrace-pse # routa pro assety balíku se přidá na začátek routeru sama
+ *     navigation: %adminMenu% # stejný formát jako admin: menu: z liquiddesign/admin
  *     bridge:
- *         enabled: true           # staré presentery liquiddesign/admin v novém shellu
+ *         enabled: true # staré presentery liquiddesign/admin v novém shellu
  *         head: %appDir%/Admin/templates/legacyHead.latte
  *         foot: %appDir%/Admin/templates/legacyFoot.latte
  * ```
@@ -111,19 +112,7 @@ final class BackofficeExtension extends CompilerExtension
 		/** @var \stdClass $config */
 		$config = $this->getConfig();
 
-		// Oprávnění: vlastní služba projektu má přednost; s mostem se bere starý admin, jinak Nette User.
-		if ($builder->findByType(AccessChecker::class) === []) {
-			// Starý admin registruje Admin\Administrator jako admin.administrator bez autowiringu,
-			// takže se službě předává jménem.
-			$administrators = $config->bridge->enabled ? \array_keys($builder->findByType('Admin\Administrator')) : [];
-			$definition = $builder->addDefinition($this->prefix('accessChecker'));
-
-			if ($administrators !== []) {
-				$definition->setFactory(LegacyAdminAccessChecker::class, ['@' . $administrators[0]]);
-			} else {
-				$definition->setFactory(UserAccessChecker::class);
-			}
-		}
+		$this->registerAccessChecker($config->bridge->enabled);
 
 		if ($config->bridge->enabled) {
 			$application = $builder->getDefinitionByType(Application::class);
@@ -134,19 +123,55 @@ final class BackofficeExtension extends CompilerExtension
 		}
 
 		if ($config->routePrefix !== null) {
-			$router = $builder->getDefinitionByType(Router::class);
-
-			if (!$router instanceof ServiceDefinition || !\is_a((string) $router->getType(), RouteList::class, true)) {
-				throw new \Nette\DI\InvalidConfigurationException('backoffice.routePrefix potřebuje router typu ' . RouteList::class . '; jinak routu přidejte sami přes ' . Routes::class . '::add().');
-			}
-
-			$router->addSetup('prepend', [new Statement(Route::class, [Routes::mask($config->routePrefix), 'Backoffice:Asset:default'])]);
+			$this->prependAssetRoute($config->routePrefix);
 		}
 
 		$presenterFactory = $builder->getDefinitionByType(IPresenterFactory::class);
 
-		if ($presenterFactory instanceof ServiceDefinition) {
-			$presenterFactory->addSetup('setMapping', [['Backoffice' => 'Backoffice\UI\*Presenter']]);
+		if (!($presenterFactory instanceof ServiceDefinition)) {
+			return;
 		}
+
+		$presenterFactory->addSetup('setMapping', [['Backoffice' => 'Backoffice\UI\*Presenter']]);
+	}
+
+	/**
+	 * Oprávnění: vlastní služba projektu má přednost; s mostem se bere starý admin, jinak Nette User.
+	 */
+	private function registerAccessChecker(bool $bridge): void
+	{
+		$builder = $this->getContainerBuilder();
+
+		if ($builder->findByType(AccessChecker::class) !== []) {
+			return;
+		}
+
+		// Starý admin registruje Admin\Administrator jako admin.administrator bez autowiringu,
+		// takže se službě předává jménem.
+		/** @var class-string $legacyType */
+		$legacyType = 'Admin\Administrator';
+		$administrators = $bridge ? \array_keys($builder->findByType($legacyType)) : [];
+		$definition = $builder->addDefinition($this->prefix('accessChecker'));
+
+		if ($administrators === []) {
+			$definition->setFactory(UserAccessChecker::class);
+
+			return;
+		}
+
+		$definition->setFactory(LegacyAdminAccessChecker::class, ['@' . $administrators[0]]);
+	}
+
+	private function prependAssetRoute(string $prefix): void
+	{
+		$router = $this->getContainerBuilder()->getDefinitionByType(Router::class);
+
+		if (!$router instanceof ServiceDefinition || !\is_a((string) $router->getType(), RouteList::class, true)) {
+			throw new InvalidConfigurationException(
+				'backoffice.routePrefix potřebuje router typu ' . RouteList::class . '; jinak routu přidejte sami přes ' . Routes::class . '::add().',
+			);
+		}
+
+		$router->addSetup('prepend', [new Statement(Route::class, [Routes::mask($prefix), 'Backoffice:Asset:default'])]);
 	}
 }

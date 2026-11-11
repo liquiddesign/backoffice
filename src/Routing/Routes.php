@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Backoffice\Routing;
 
 use Nette\Application\Routers\RouteList;
+use Nette\Utils\Strings;
 
 /**
  * Routy balíku. Volat dřív než obecné routy projektu:
@@ -22,6 +23,6 @@ final class Routes
 
 	public static function mask(string $prefix): string
 	{
-		return \trim($prefix, '/') . '/_backoffice/<file .+>';
+		return Strings::trim($prefix, '/') . '/_backoffice/<file .+>';
 	}
 }

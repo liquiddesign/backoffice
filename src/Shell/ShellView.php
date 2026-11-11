@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Backoffice\Shell;
 
+use Nette\Utils\Strings;
+
 /**
  * Všechno, co layout shellu potřebuje k vykreslení jedné stránky.
  */
@@ -31,11 +33,11 @@ final class ShellView
 
 	public function userInitials(): string
 	{
-		if ($this->userName === null || \trim($this->userName) === '') {
+		if ($this->userName === null || Strings::trim($this->userName) === '') {
 			return '?';
 		}
 
-		$words = \preg_split('/\s+/u', \trim($this->userName)) ?: [];
+		$words = \preg_split('/\s+/u', Strings::trim($this->userName)) ?: [];
 		$initials = '';
 
 		foreach (\array_slice($words, 0, 2) as $word) {
