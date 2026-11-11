@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Backoffice\DI;
 
 use Backoffice\Bridge\LegacyAdminAccessChecker;
-use Backoffice\Bridge\LegacyChangeLogger;
 use Backoffice\Bridge\LegacyBridge;
+use Backoffice\Bridge\LegacyChangeLogger;
 use Backoffice\Resource\Form\FormFactory;
 use Backoffice\Resource\ResourceDefinition;
 use Backoffice\Resource\ResourceRegistry;
