@@ -1,0 +1,11 @@
+vendor/
+composer.lock
+node_modules/
+tests/output/
+tests/temp/
+playground/temp/
+playground/log/
+playground/vendor/
+playground/config/local.neon
+.idea/
+.phpcs-cache

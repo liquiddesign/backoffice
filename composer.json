@@ -1,0 +1,47 @@
+{
+	"name": "liquiddesign/backoffice",
+	"description": "Administrace pro weby Liquid Design na Nette a StORM — shell, deklarativní agendy, asistent, Pomoc, odběratelé API",
+	"type": "library",
+	"license": "MIT",
+	"keywords": ["nette", "admin", "backoffice", "storm"],
+	"require": {
+		"php": ">=8.2",
+		"nette/application": "^3.2",
+		"nette/di": "^3.1",
+		"nette/forms": "^3.1",
+		"latte/latte": "^3.0",
+		"liquiddesign/storm": "~2.0"
+	},
+	"require-dev": {
+		"nette/tester": "^2.5",
+		"tracy/tracy": "^2.10",
+		"liquiddesign/codestyle": "~3.0",
+		"liquiddesign/migrator": "~1.0",
+		"phpstan/phpstan-nette": "^1.0"
+	},
+	"suggest": {
+		"liquiddesign/admin": "Most: staré presentery liquiddesign/admin ~2.1 vykreslené v novém shellu během převodu"
+	},
+	"autoload": {
+		"psr-4": {
+			"Backoffice\\": "src/"
+		}
+	},
+	"scripts": {
+		"check-code": [
+			"@phpcs",
+			"@phpstan"
+		],
+		"phpstan": "phpstan analyse --memory-limit 1G -c phpstan.neon",
+		"phpcs": "phpcs --standard=ruleset.xml --ignore=assets --cache src",
+		"phpcsfix": "phpcbf --standard=ruleset.xml --ignore=assets --cache src",
+		"tester": "tester tests/ -C"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	},
+	"minimum-stability": "dev",
+	"prefer-stable": true
+}
