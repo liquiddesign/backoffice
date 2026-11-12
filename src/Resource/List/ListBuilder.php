@@ -84,6 +84,22 @@ final class ListBuilder
 	}
 
 	/**
+	 * Náhled obrázku z userfiles/<directory> (nejlépe adresář s malou kopií, např. 'quick_links/thumb').
+	 */
+	public function image(string $name, string $label, string $directory): Column
+	{
+		return $this->add((new Column(Column::TYPE_IMAGE, $name, $label))->directory($directory));
+	}
+
+	/**
+	 * Počet míst, kde se záznam používá (ResourceDefinition::usages()); odkaz na jejich seznam.
+	 */
+	public function usage(string $label = 'Použito'): Column
+	{
+		return $this->add(new Column(Column::TYPE_USAGE, '_usage', $label));
+	}
+
+	/**
 	 * Štítky jazyků. Bez $column: jazyk je „vyplněný“, když má záznam vyplněné jazykové sloupce
 	 * seznamu; s $column podle booleovského jazykového sloupce (např. active).
 	 */

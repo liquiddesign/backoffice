@@ -22,6 +22,7 @@ final class Field
 	public const TYPE_DATE = 'date';
 	public const TYPE_LOCALE_TEXT = 'localeText';
 	public const TYPE_LOCALE_TEXTAREA = 'localeTextarea';
+	public const TYPE_IMAGE = 'image';
 
 	private bool $required = false;
 
@@ -33,6 +34,9 @@ final class Field
 	private ?string $uniqueMessage = null;
 
 	private mixed $default = null;
+
+	/** @var array<string, (\Closure(\Nette\Utils\Image): void)|null> adresář v userfiles → úprava obrázku */
+	private array $imageDirectories = [];
 
 	public function __construct(
 		public readonly string $type,
@@ -92,6 +96,35 @@ final class Field
 		$this->uniqueMessage = $message;
 
 		return $this;
+	}
+
+	/**
+	 * Obrázek: adresář v userfiles (např. 'contact_persons' nebo 'quick_links/thumb'), kam se uloží
+	 * kopie, a volitelně úprava (fn (Image $image) => $image->resize(600, 600)). Víc adresářů = víc
+	 * velikostí; náhled ve formuláři je z prvního. Soubor se jmenuje <ID záznamu>.<přípona>.
+	 * @param (\Closure(\Nette\Utils\Image): void)|null $transform
+	 */
+	public function imageDirectory(string $directory, ?\Closure $transform = null): self
+	{
+		if ($this->type !== self::TYPE_IMAGE) {
+			throw new \LogicException("Pole '{$this->name}' není obrázek.");
+		}
+
+		if (!\preg_match('~^[a-z0-9_-]+(/[a-z0-9_-]+)*$~i', $directory)) {
+			throw new \InvalidArgumentException("Neplatný adresář obrázku '$directory'.");
+		}
+
+		$this->imageDirectories[$directory] = $transform;
+
+		return $this;
+	}
+
+	/**
+	 * @return array<string, (\Closure(\Nette\Utils\Image): void)|null>
+	 */
+	public function getImageDirectories(): array
+	{
+		return $this->imageDirectories;
 	}
 
 	public function getUniqueMessage(): ?string

@@ -19,6 +19,8 @@ class Column
 	public const TYPE_STATUS = 'status';
 	public const TYPE_PRIORITY = 'priority';
 	public const TYPE_MUTATIONS = 'mutations';
+	public const TYPE_IMAGE = 'image';
+	public const TYPE_USAGE = 'usage';
 
 	/** Typy, které jde upravit přímo v řádku (->editable()). */
 	public const EDITABLE_TYPES = [self::TYPE_TEXT, self::TYPE_INTEGER, self::TYPE_CHECKBOX, self::TYPE_PRIORITY];
@@ -37,6 +39,10 @@ class Column
 	private bool $mono = false;
 
 	private ?string $format = null;
+
+	private ?string $pattern = null;
+
+	private ?string $directory = null;
 
 	private ?string $defaultDirection = null;
 
@@ -107,6 +113,36 @@ class Column
 		$this->mono = $mono;
 
 		return $this;
+	}
+
+	/**
+	 * Text zobrazený podle vzoru sprintf, např. '{control contactBox-%s}' (kód k vložení do stránky).
+	 */
+	public function pattern(string $pattern): static
+	{
+		$this->pattern = $pattern;
+
+		return $this;
+	}
+
+	public function getPattern(): ?string
+	{
+		return $this->pattern;
+	}
+
+	/**
+	 * Adresář obrázku v userfiles (sloupec obrázku).
+	 */
+	public function directory(string $directory): static
+	{
+		$this->directory = $directory;
+
+		return $this;
+	}
+
+	public function getDirectory(): ?string
+	{
+		return $this->directory;
 	}
 
 	/**

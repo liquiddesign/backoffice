@@ -7,6 +7,7 @@ namespace Backoffice\DI;
 use Backoffice\Bridge\LegacyAdminAccessChecker;
 use Backoffice\Bridge\LegacyBridge;
 use Backoffice\Bridge\LegacyChangeLogger;
+use Backoffice\Media\ImageStorage;
 use Backoffice\Resource\Form\FormFactory;
 use Backoffice\Resource\ResourceDefinition;
 use Backoffice\Resource\ResourceRegistry;
@@ -72,6 +73,9 @@ final class BackofficeExtension extends CompilerExtension
 			'navigation' => Expect::array()->default([]),
 			// slugy agend, které už nahradily svůj starý presenter (menu + přesměrování staré adresy)
 			'switched' => Expect::listOf('string')->default([]),
+			// Obrázky agend: adresář na disku a jeho adresa na webu (výchozí %wwwDir%/userfiles, /userfiles).
+			'userDir' => Expect::string()->nullable(),
+			'userUrl' => Expect::string('/userfiles'),
 			'bridge' => Expect::structure([
 				'enabled' => Expect::bool(false),
 				'head' => Expect::string()->nullable(),
@@ -110,6 +114,16 @@ final class BackofficeExtension extends CompilerExtension
 
 		$builder->addDefinition($this->prefix('resourcePresenter'))
 			->setFactory(ResourcePresenter::class);
+
+		$wwwDir = $builder->parameters['wwwDir'] ?? null;
+		$userDir = $config->userDir ?? (\is_string($wwwDir) ? $wwwDir . '/userfiles' : null);
+
+		if ($userDir === null) {
+			throw new InvalidConfigurationException('backoffice: chybí userDir (a parametr wwwDir).');
+		}
+
+		$builder->addDefinition($this->prefix('imageStorage'))
+			->setFactory(ImageStorage::class, ['userDir' => $userDir, 'userUrl' => $config->userUrl]);
 
 		$builder->addDefinition($this->prefix('formFactory'))
 			->setFactory(FormFactory::class);

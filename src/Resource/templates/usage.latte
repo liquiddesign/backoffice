@@ -1,0 +1,40 @@
+{* Smazání záznamu, který se používá na stránkách (ResourceDefinition::usages()). *}
+{varType StORM\Entity $entity}
+{varType string $entityTitle}
+{varType array $locations}
+{varType bool $canHide}
+{varType bool $hidden}
+{varType bool $canDelete}
+{define location, Backoffice\Resource\UsageLocation $location}
+	{if $location->link}<a href="{$presenter->link($location->link, $location->linkArgs)}" target="_blank" rel="noopener">{$location->label}</a>{else}{$location->label}{/if}
+	<span n:if="$location->note" class="bo-muted">{$location->note}</span>
+	<ul n:if="$location->children" class="bo-usage-list">
+		<li n:foreach="$location->children as $child">{include location, location: $child}</li>
+	</ul>
+{/define}
+{block content}
+	<section class="bo-card">
+		<div class="bo-card-body">
+			{if $locations}
+				<p>„{$entityTitle}“ se používá na těchto místech. Po smazání se tam nic nevypíše.</p>
+				<ul class="bo-usage-list">
+					<li n:foreach="$locations as $location">{include location, location: $location}</li>
+				</ul>
+				{if $canHide}
+					<p class="bo-muted">{if $hidden}Záznam už je skrytý, na stránkách se nezobrazuje.{else}Doporučujeme ho místo smazání skrýt: na stránkách se přestane zobrazovat, v agendě zůstane a kdykoli ho zase zobrazíte.{/if}</p>
+				{/if}
+			{else}
+				<p>„{$entityTitle}“ se na žádné stránce nepoužívá.</p>
+			{/if}
+			<div class="bo-usage-actions">
+				<form n:if="$canHide && !$hidden && $locations" method="post" action="{link hide! id => $entity->getPK()}">
+					<button type="submit" class="bo-btn bo-btn-primary">Skrýt místo smazání</button>
+				</form>
+				<form n:if="$canDelete" method="post" action="{link delete! id => $entity->getPK(), force => true}" data-bo-confirm="Opravdu smazat „{$entityTitle}“?{if $locations} Na stránkách výše se pak nic nevypíše.{/if}">
+					<button type="submit" class="bo-btn bo-btn-danger-outline">{$locations ? 'Přesto smazat' : 'Smazat'}</button>
+				</form>
+				<a class="bo-btn bo-btn-ghost" n:href="default">Zpět</a>
+			</div>
+		</div>
+	</section>
+{/block}

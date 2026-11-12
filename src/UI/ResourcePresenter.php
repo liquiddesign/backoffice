@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Backoffice\UI;
 
+use Backoffice\Media\ImageStorage;
 use Backoffice\Resource\Form\Field;
 use Backoffice\Resource\Form\FormFactory;
 use Backoffice\Resource\List\ListControl;
@@ -37,6 +38,9 @@ final class ResourcePresenter extends BackofficePresenter
 
 	#[Inject]
 	public ChangeLogger $changeLogger;
+
+	#[Inject]
+	public ImageStorage $images;
 
 	private ?ResourceDefinition $definition = null;
 
@@ -119,7 +123,7 @@ final class ResourcePresenter extends BackofficePresenter
 	}
 
 	#[Requires(methods: 'POST', sameOrigin: true)]
-	public function handleDelete(string $id): void
+	public function handleDelete(string $id, bool $force = false): void
 	{
 		$meta = $this->getDefinition()->getMeta();
 
@@ -128,6 +132,11 @@ final class ResourcePresenter extends BackofficePresenter
 		}
 
 		$entity = $meta->getRepository()->one($id);
+
+		if ($entity !== null && !$force && ($this->getDefinition()->usages($entity) ?? []) !== []) {
+			// Používá se na stránkách — rozhodne se na stránce se seznamem míst.
+			$this->redirect('usage', ['id' => $id]);
+		}
 
 		if ($entity !== null) {
 			$title = $this->entityTitle($entity);
@@ -150,6 +159,68 @@ final class ResourcePresenter extends BackofficePresenter
 		}
 
 		$this->redirect('default', $this->listParameters());
+	}
+
+	public function actionUsage(string $id): void
+	{
+		$entity = $this->getDefinition()->getMeta()->getRepository()->one($id);
+
+		if ($entity === null) {
+			$this->flashMessage('Záznam už neexistuje.', 'warning');
+			$this->redirect('default', $this->listParameters());
+		}
+
+		$this->entity = $entity;
+	}
+
+	public function renderUsage(): void
+	{
+		$meta = $this->getDefinition()->getMeta();
+		$entity = $this->getEntity();
+		$title = $this->entityTitle($entity);
+
+		$this->title = 'Smazat: ' . $title;
+		$this->breadcrumbs = [[$meta->getTitle(), 'default', $this->listParameters()], ['Smazat']];
+		$this->buttons = [$this->button('Zpět na seznam', 'default', $this->listParameters(), variant: 'ghost')];
+		$this->template->entity = $entity;
+		$this->template->entityTitle = $title;
+		$this->template->locations = $this->getDefinition()->usages($entity) ?? [];
+		$this->template->canHide = $meta->getRepository()->getStructure()->getColumn('hidden') !== null;
+		$this->template->hidden = (bool) ($meta->getRepository()->getStructure()->getColumn('hidden') !== null ? $entity->getValue('hidden') : false);
+		$this->template->canDelete = $this->canDelete();
+		$this->template->setFile(__DIR__ . '/../Resource/templates/usage.latte');
+	}
+
+	/**
+	 * Skrýt místo smazání (stránka „Smazat“ u použitého záznamu).
+	 */
+	#[Requires(methods: 'POST', sameOrigin: true)]
+	public function handleHide(string $id): void
+	{
+		$meta = $this->getDefinition()->getMeta();
+
+		if (!$this->isAllowedAction('edit')) {
+			$this->error('Na úpravy nemáte oprávnění.', 403);
+		}
+
+		$entity = $meta->getRepository()->one($id);
+
+		if ($entity !== null && $meta->getRepository()->getStructure()->getColumn('hidden') !== null && !$entity->getValue('hidden')) {
+			$entity->update(['hidden' => true]);
+			$this->logChange(ChangeLogger::TYPE_DETAIL, $id);
+			$this->getDefinition()->changed();
+			$this->flashWithUndo('Skryto: ' . $this->entityTitle($entity) . '. Na stránkách se už nezobrazí, v agendě zůstává.', [['update', $id, ['hidden' => false]]]);
+		}
+
+		$this->redirect('default', $this->listParameters());
+	}
+
+	/**
+	 * Adresa náhledu obrázku z userfiles, nebo null, když soubor není.
+	 */
+	public function imageUrl(?string $directory, mixed $filename): ?string
+	{
+		return $directory !== null && \is_string($filename) && $filename !== '' ? $this->images->url($directory, $filename) : null;
 	}
 
 	/**
@@ -283,6 +354,19 @@ final class ResourcePresenter extends BackofficePresenter
 		return \array_keys($this->getDefinition()->getMeta()->getRepository()->getConnection()->getAvailableMutations());
 	}
 
+	public function entityTitle(Entity $entity): string
+	{
+		foreach ($this->getDefinition()->buildList()->getColumns() as $column) {
+			if ($column->isLink()) {
+				$value = $entity->getValue($column->name);
+
+				return \is_scalar($value) && (string) $value !== '' ? (string) $value : (string) $entity->getPK();
+			}
+		}
+
+		return (string) $entity->getPK();
+	}
+
 	protected function createComponentForm(): Form
 	{
 		$definition = $this->getDefinition();
@@ -290,6 +374,7 @@ final class ResourcePresenter extends BackofficePresenter
 
 		$form->onValidate[] = function (Form $form) use ($definition): void {
 			$this->validateUnique($form, $definition);
+			$this->validateImages($form, $definition);
 		};
 
 		$form->onSuccess[] = function (Form $form, array $values) use ($definition): void {
@@ -313,6 +398,7 @@ final class ResourcePresenter extends BackofficePresenter
 				$type = ChangeLogger::TYPE_NEW;
 			}
 
+			$this->saveImages($form, $definition, $entity);
 			$this->changeLogger->log($meta->getTitle(), $type, (string) $entity->getPK());
 			$definition->changed();
 
@@ -365,7 +451,87 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->template->entity = $this->entity;
 		$this->template->fieldsTemplate = Field::TEMPLATE;
 		$this->template->canDelete = $this->canDelete();
+		$this->template->imageUrls = $this->imageUrls();
 		$this->template->setFile(__DIR__ . '/../Resource/templates/form.latte');
+	}
+
+	/**
+	 * Povinný obrázek: buď už je u záznamu, nebo se právě nahrává.
+	 */
+	private function validateImages(Form $form, ResourceDefinition $definition): void
+	{
+		foreach ($definition->buildForm()->getFields() as $field) {
+			if ($field->type !== Field::TYPE_IMAGE || !$field->isRequired()) {
+				continue;
+			}
+
+			$control = $form->getComponent($field->name);
+			\assert($control instanceof \Nette\Forms\Controls\UploadControl);
+			$upload = $control->getValue();
+			$current = $this->entity?->getValue($field->name);
+			$remove = (bool) $form->getComponent($field->name . FormFactory::REMOVE_SUFFIX)->getValue();
+
+			if (($upload instanceof \Nette\Http\FileUpload && $upload->isOk()) || (\is_string($current) && $current !== '' && !$remove)) {
+				continue;
+			}
+
+			$control->addError('Nahrajte obrázek ' . $field->label . '.');
+		}
+	}
+
+	/**
+	 * Nahrané obrázky do userfiles (jméno = ID záznamu), odstraněné smazat. Starý soubor s jinou
+	 * příponou se po nahrání nového smaže.
+	 */
+	private function saveImages(Form $form, ResourceDefinition $definition, Entity $entity): void
+	{
+		foreach ($definition->buildForm()->getFields() as $field) {
+			if ($field->type !== Field::TYPE_IMAGE) {
+				continue;
+			}
+
+			$control = $form->getComponent($field->name);
+			\assert($control instanceof \Nette\Forms\Controls\UploadControl);
+			$upload = $control->getValue();
+			$current = $entity->getValue($field->name);
+			$current = \is_string($current) && $current !== '' ? $current : null;
+			$remove = (bool) $form->getComponent($field->name . FormFactory::REMOVE_SUFFIX)->getValue();
+
+			if ($upload instanceof \Nette\Http\FileUpload && $upload->isOk()) {
+				$filename = $this->images->save($upload, $field->getImageDirectories(), (string) $entity->getPK());
+
+				if ($current !== null && $current !== $filename) {
+					$this->images->delete($field->getImageDirectories(), $current);
+				}
+
+				$entity->update([$field->name => $filename]);
+			} elseif ($remove && $current !== null) {
+				$this->images->delete($field->getImageDirectories(), $current);
+				$entity->update([$field->name => null]);
+			}
+		}
+	}
+
+	/**
+	 * Náhledy obrázků záznamu pro formulář: jméno pole → adresa (z prvního adresáře pole).
+	 * @return array<string, string>
+	 */
+	private function imageUrls(): array
+	{
+		$urls = [];
+
+		foreach ($this->getDefinition()->buildForm()->getFields() as $field) {
+			$directory = \array_key_first($field->getImageDirectories());
+			$url = $this->entity !== null ? $this->imageUrl($directory, $this->entity->getValue($field->name)) : null;
+
+			if ($url === null) {
+				continue;
+			}
+
+			$urls[$field->name] = $url;
+		}
+
+		return $urls;
 	}
 
 	private function hasListView(): bool
@@ -445,18 +611,5 @@ final class ResourcePresenter extends BackofficePresenter
 	private function getEntity(): Entity
 	{
 		return $this->entity ?? throw new \LogicException('Záznam není načtený.');
-	}
-
-	private function entityTitle(Entity $entity): string
-	{
-		foreach ($this->getDefinition()->buildList()->getColumns() as $column) {
-			if ($column->isLink()) {
-				$value = $entity->getValue($column->name);
-
-				return \is_scalar($value) && (string) $value !== '' ? (string) $value : (string) $entity->getPK();
-			}
-		}
-
-		return (string) $entity->getPK();
 	}
 }

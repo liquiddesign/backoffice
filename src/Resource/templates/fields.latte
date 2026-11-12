@@ -23,6 +23,26 @@
 			</div>
 			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
 		</fieldset>
+	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_IMAGE}
+		{var $imageUrl = ($imageUrls ?? [])[$field->name] ?? null}
+		<div class="bo-field">
+			<label n:name="$field->name">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
+			<div n:class="bo-image, $imageUrl ? has-image, $form[$field->name]->hasErrors() ? is-invalid" data-bo-image>
+				<div class="bo-image-thumb">
+					<img n:if="$imageUrl" src="{$imageUrl}" alt="" data-bo-image-preview>
+					<img n:if="!$imageUrl" alt="" data-bo-image-preview hidden>
+					<span n:if="!$imageUrl" class="bo-image-empty" data-bo-image-empty>Bez obrázku</span>
+				</div>
+				<div class="bo-image-drop">
+					<input n:name="$field->name" class="bo-image-input">
+					<span class="bo-image-text" data-bo-image-text>{if $imageUrl}Přetáhněte nový obrázek, nebo <u>vyberte</u>{else}Přetáhněte obrázek, nebo <u>vyberte</u>{/if}</span>
+					<span class="bo-help">JPG, PNG, GIF nebo WebP; na webu se použije i WebP verze</span>
+				</div>
+			</div>
+			<label n:if="$imageUrl" class="bo-check bo-image-remove"><input n:name="$field->name . Backoffice\Resource\Form\FormFactory::REMOVE_SUFFIX"> Odstranit obrázek (smaže se po uložení)</label>
+			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
+			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+		</div>
 	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_CHECKBOX}
 		<div class="bo-field">
 			<label class="bo-check"><input n:name="$field->name"> {$field->label}</label>

@@ -27,7 +27,7 @@ final class Routes
 	 */
 	public static function resourceMask(string $prefix): string
 	{
-		return Strings::trim($prefix, '/') . '/r/<resource [a-z][a-z0-9-]*>[/<action edit|new>][/<id>]';
+		return Strings::trim($prefix, '/') . '/r/<resource [a-z][a-z0-9-]*>[/<action edit|new|usage>][/<id>]';
 	}
 
 	public static function mask(string $prefix): string

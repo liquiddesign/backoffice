@@ -36,3 +36,19 @@ test('sekce řadí pole', function (): void {
 
 	Assert::same(['Základní údaje', 'Publikace'], array_keys($builder->getSections()));
 });
+
+test('obrázek: upload + Odstranit, do hodnot pro uložení nejde', function (): void {
+	$builder = new FormBuilder();
+	$builder->text('name', 'Jméno');
+	$builder->image('photo', 'Fotka')->imageDirectory('contact_persons', static fn ($image) => $image->resize(600, 600));
+	$builder->integer('priority', 'Pořadí')->default(10);
+
+	$form = (new FormFactory())->create($builder, ['cs']);
+
+	Assert::type(Nette\Forms\Controls\UploadControl::class, $form['photo']);
+	Assert::type(Nette\Forms\Controls\Checkbox::class, $form['photo' . FormFactory::REMOVE_SUFFIX]);
+	Assert::same(10, $form['priority']->getValue());
+	Assert::same(['contact_persons'], array_keys($builder->getFields()['photo']->getImageDirectories()));
+	Assert::exception(fn () => $builder->getFields()['name']->imageDirectory('x'), LogicException::class);
+	Assert::exception(fn () => $builder->getFields()['photo']->imageDirectory('../etc'), InvalidArgumentException::class);
+});

@@ -17,6 +17,7 @@
 {varType bool $selection}
 {varType bool $canReorder}
 {varType string $pkName}
+{varType array $usages}
 {var $C = Backoffice\Resource\List\Column::class}
 {var $I = Backoffice\Shell\Icons::class}
 {var $columnCount = count($list->getColumns()) + 1 + ($selection ? 1 : 0) + ($canReorder ? 1 : 0)}
@@ -93,6 +94,17 @@
 									<span n:class="bo-pill, $filled ? bo-pill-brand" title="{$filled ? 'vyplněno' : 'nevyplněno'}">{$mutation|upper}</span>
 								{/foreach}
 								</span>
+							{elseif $column->type === $C::TYPE_IMAGE}
+								{var $src = $presenter->imageUrl($column->getDirectory(), $row->getValue($column->name))}
+								<img n:if="$src" src="{$src}" alt="" class="bo-cell-image" loading="lazy">
+								<span n:if="!$src" class="bo-cell-image bo-cell-image-empty" aria-label="bez obrázku"></span>
+							{elseif $column->type === $C::TYPE_USAGE}
+								{var $count = $usages[$pk] ?? null}
+								{if $count}
+									<a href="{plink usage id => $pk}" title="Kde se používá">{$count}×</a>
+								{else}
+									<span class="bo-muted" title="Nikde se nepoužívá">—</span>
+								{/if}
 							{elseif $column->type === $C::TYPE_STATUS}
 								{var $state = $column->getState($row->getValue($column->name))}
 								<span n:if="$state" class="bo-pill bo-pill-{$state[1]}">{$state[0]}</span>
@@ -126,7 +138,8 @@
 						<td class="bo-td-actions">
 							<div class="bo-row-actions">
 								<a n:if="$hasDetail" class="bo-btn bo-btn-ghost bo-btn-icon" href="{plink edit id => $pk}" aria-label="Upravit" title="Upravit">{$I::get('edit', 16)}</a>
-								<button n:if="$canDelete" type="submit" name="action" value="delete-row:{$pk}" class="bo-btn bo-btn-ghost bo-btn-icon bo-btn-danger-text" aria-label="Smazat" title="Smazat" data-bo-confirm="Smazat záznam?">{$I::get('trash', 16)}</button>
+								<a n:if="$canDelete && ($usages[$pk] ?? 0) > 0" class="bo-btn bo-btn-ghost bo-btn-icon bo-btn-danger-text" href="{plink usage id => $pk}" aria-label="Smazat (používá se na stránkách)" title="Smazat — používá se na stránkách">{$I::get('trash', 16)}</a>
+								<button n:if="$canDelete && !($usages[$pk] ?? 0)" type="submit" name="action" value="delete-row:{$pk}" class="bo-btn bo-btn-ghost bo-btn-icon bo-btn-danger-text" aria-label="Smazat" title="Smazat" data-bo-confirm="Smazat záznam?">{$I::get('trash', 16)}</button>
 							</div>
 						</td>
 					</tr>

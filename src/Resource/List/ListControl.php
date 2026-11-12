@@ -62,8 +62,17 @@ final class ListControl extends Control
 
 		$template = $this->getTemplate();
 		\assert($template instanceof Template);
+		$rows = $collection->toArray();
+		$usages = [];
+
+		foreach ($rows as $row) {
+			$locations = $presenter->getDefinition()->usages($row);
+			$usages[(string) $row->getPK()] = $locations === null ? null : \count($locations);
+		}
+
 		$template->list = $list;
-		$template->rows = $collection->toArray();
+		$template->rows = $rows;
+		$template->usages = $usages;
 		$template->pager = $pager;
 		$template->sortKey = $sortKey;
 		$template->direction = $direction;
@@ -141,6 +150,10 @@ final class ListControl extends Control
 	public function cellValue(Entity $row, Column $column): mixed
 	{
 		$value = $row->getValue($column->name, $column->mutation);
+
+		if ($column->getPattern() !== null && $value !== null && $value !== '') {
+			$value = \sprintf($column->getPattern(), \is_scalar($value) ? (string) $value : '');
+		}
 
 		if ($column->type === Column::TYPE_DATE && $value !== null && $value !== '') {
 			$value = (new \DateTimeImmutable((string) $value))->format($column->getFormat() ?? 'j. n. Y');
@@ -249,8 +262,17 @@ final class ListControl extends Control
 
 		$undo = [];
 		$failed = 0;
+		$skipped = [];
 
 		foreach ($this->loadEntities($ids) as $pk => $entity) {
+			$locations = $presenter->getDefinition()->usages($entity);
+
+			if ($locations !== null && $locations !== []) {
+				$skipped[] = $presenter->entityTitle($entity);
+
+				continue;
+			}
+
 			$data = $entity->toArray();
 
 			try {
@@ -270,11 +292,15 @@ final class ListControl extends Control
 			$presenter->flashWithUndo('Smazáno: ' . self::records(\count($undo)) . '.', $undo);
 		}
 
+		if ($skipped !== []) {
+			$presenter->flashMessage('Nesmazáno, používá se na stránkách: ' . \implode(', ', $skipped) . '. Kde přesně, ukáže koš u řádku.', 'warning');
+		}
+
 		if ($failed > 0) {
 			$presenter->flashMessage('Nepodařilo se smazat ' . self::records($failed) . ' — nejspíš se na ně odkazují jiná data.', 'error');
 		}
 
-		if ($undo !== [] || $failed !== 0) {
+		if ($undo !== [] || $failed !== 0 || $skipped !== []) {
 			return;
 		}
 

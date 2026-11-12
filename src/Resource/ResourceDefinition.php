@@ -6,6 +6,7 @@ namespace Backoffice\Resource;
 
 use Backoffice\Resource\Form\FormBuilder;
 use Backoffice\Resource\List\ListBuilder;
+use StORM\Entity;
 
 /**
  * Předek deklarativní agendy. Projekt popíše data, seznam a formulář, zbytek obstará balík.
@@ -60,6 +61,19 @@ abstract class ResourceDefinition
 	 */
 	public function createListView(): ?ListView
 	{
+		return null;
+	}
+
+	/**
+	 * Kde se záznam používá. Agenda, která to sleduje, vrátí seznam (i prázdný); null = nesleduje.
+	 * Použitý záznam se nesmaže rovnou: koš vede na stránku se seznamem míst, kde jde záznam
+	 * skrýt (má-li sloupec hidden), nebo přesto smazat. Hromadné mazání použité záznamy přeskočí.
+	 * @return list<\Backoffice\Resource\UsageLocation>|null
+	 */
+	public function usages(Entity $entity): ?array
+	{
+		unset($entity);
+
 		return null;
 	}
 

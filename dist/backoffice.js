@@ -408,4 +408,50 @@
 			renumber();
 		});
 	});
+
+	// Obrázek ve formuláři: náhled vybraného souboru, zvýraznění při přetahování.
+	document.querySelectorAll('[data-bo-image]').forEach(function (box) {
+		var input = box.querySelector('input[type=file]');
+		var preview = box.querySelector('[data-bo-image-preview]');
+		var empty = box.querySelector('[data-bo-image-empty]');
+		var text = box.querySelector('[data-bo-image-text]');
+
+		if (!input) {
+			return;
+		}
+
+		['dragenter', 'dragover'].forEach(function (type) {
+			input.addEventListener(type, function () { box.classList.add('is-dragover'); });
+		});
+		['dragleave', 'drop'].forEach(function (type) {
+			input.addEventListener(type, function () { box.classList.remove('is-dragover'); });
+		});
+
+		input.addEventListener('change', function () {
+			var file = input.files && input.files[0];
+
+			if (!file) {
+				return;
+			}
+
+			if (text) {
+				text.textContent = file.name + ' · ' + Math.max(1, Math.round(file.size / 1024)) + ' kB — uloží se s formulářem';
+			}
+
+			if (preview && /^image\//.test(file.type)) {
+				preview.src = URL.createObjectURL(file);
+				preview.hidden = false;
+
+				if (empty) {
+					empty.hidden = true;
+				}
+			}
+
+			var remove = input.form && input.form.querySelector('[name="' + input.name + '__remove"]');
+
+			if (remove) {
+				remove.checked = false;
+			}
+		});
+	});
 })();

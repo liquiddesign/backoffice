@@ -178,7 +178,7 @@ final class Meta
 	public function permissionLink(string $action): string
 	{
 		$legacyAction = match ($action) {
-			'edit' => 'detail',
+			'edit', 'usage' => 'detail',
 			default => $action,
 		};
 

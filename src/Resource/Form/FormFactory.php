@@ -19,6 +19,9 @@ use StORM\Meta\Structure;
  */
 final class FormFactory
 {
+	/** Zaškrtávátko „Odstranit obrázek“ vedle pole obrázku: <pole>__remove. */
+	public const REMOVE_SUFFIX = '__remove';
+
 	private const DATE_PATTERN = '\d{4}-\d{2}-\d{2}';
 
 	/**
@@ -32,6 +35,12 @@ final class FormFactory
 		foreach ($builder->getFields() as $field) {
 			if ($field->isLocalized()) {
 				$this->addLocalized($form, $field, $mutations);
+
+				continue;
+			}
+
+			if ($field->type === Field::TYPE_IMAGE) {
+				$this->addImage($form, $field);
 
 				continue;
 			}
@@ -65,6 +74,10 @@ final class FormFactory
 		$defaults = [];
 
 		foreach ($builder->getFields() as $name => $field) {
+			if ($field->type === Field::TYPE_IMAGE) {
+				continue;
+			}
+
 			$value = $data[$name] ?? null;
 
 			if ($field->type === Field::TYPE_DATE && \is_string($value)) {
@@ -91,8 +104,9 @@ final class FormFactory
 	{
 		$result = [];
 
-		foreach (\array_keys($builder->getFields()) as $name) {
-			if (!\array_key_exists($name, $values)) {
+		foreach ($builder->getFields() as $name => $field) {
+			// Obrázky ukládá presenter až po uložení záznamu (jméno souboru = ID záznamu).
+			if (!\array_key_exists($name, $values) || $field->type === Field::TYPE_IMAGE) {
 				continue;
 			}
 
@@ -135,6 +149,15 @@ final class FormFactory
 
 			$control->setRequired('Vyplňte pole ' . $field->label . ' (' . Strings::upper($mutation) . ').');
 		}
+	}
+
+	private function addImage(Form $form, Field $field): void
+	{
+		$upload = $form->addUpload($field->name, $field->label);
+		$upload->setHtmlAttribute('accept', 'image/jpeg,image/png,image/gif,image/webp');
+		$upload->addCondition(Form::Filled)
+			->addRule(Form::Image, 'Nahrajte obrázek JPG, PNG, GIF nebo WebP.');
+		$form->addCheckbox($field->name . self::REMOVE_SUFFIX, 'Odstranit obrázek');
 	}
 
 	private function createControl(Form $form, Field $field): BaseControl

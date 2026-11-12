@@ -2,6 +2,7 @@
 {varType array $mutations}
 {varType string $fieldsTemplate}
 {varType bool $canDelete}
+{varType array $imageUrls}
 {block content}
 	<form n:name="form" class="bo-form" data-bo-form novalidate>
 		<div n:foreach="$form->getOwnErrors() as $error" class="bo-flash bo-flash-error" role="alert"><span>{$error}</span></div>
@@ -9,7 +10,7 @@
 		<section n:foreach="$sections as $sectionTitle => $fields" class="bo-card">
 			<div class="bo-card-head"><h2>{$sectionTitle}</h2></div>
 			<div class="bo-card-body">
-				{include $fieldsTemplate, form: $form, fields: $fields, mutations: $mutations}
+				{include $fieldsTemplate, form: $form, fields: $fields, mutations: $mutations, imageUrls: $imageUrls}
 			</div>
 		</section>
 

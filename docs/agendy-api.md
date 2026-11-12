@@ -85,6 +85,8 @@ Tabulka podle návrhu „Seznam“: filtr nahoře, tabulka, lišta dole (výběr
 | `checkbox(name, label)` | ano/ne; s `->editable()` přepínač v řádku |
 | `status(name, label, [hodnota => [štítek, varianta]])` | štítek stavu (ok, info, warn, danger, brand, mute) |
 | `priority(name = 'priority')` | pořadí: číslo v řádku + přetahování za úchyt, výchozí řazení |
+| `image(name, label, directory)` | náhled obrázku z `userfiles/<directory>` (40 × 40) |
+| `usage(label = 'Použito')` | počet míst, kde se záznam používá (`ResourceDefinition::usages()`), odkaz na jejich seznam |
 | `mutations(label = 'Jazyky', column = null)` | štítky jazyků: vyplněné jazykové sloupce, nebo podle booleovského sloupce (`active`) |
 | `search(placeholder)` | text v poli „Hledat“; hledá se ve sloupcích s `->searchable()` |
 | `filter(name, label, items)` | výběr; bez `->condition()` filtruje `sloupec = hodnota`; `->default()` = bez „Všechny“ |
@@ -94,7 +96,8 @@ Tabulka podle návrhu „Seznam“: filtr nahoře, tabulka, lišta dole (výběr
 | `perPage(n)` | počet řádků na stránku (výchozí 50; v liště jde přepnout 20/50/100/200) |
 
 Sloupec: `->sortable()` (klik na hlavičku), `->searchable()`, `->link()` (odkaz na stránku záznamu),
-`->editable()` (text, číslo, zaškrtávátko), `->mono()`, `->format()`.
+`->editable()` (text, číslo, zaškrtávátko), `->mono()`, `->format()`, `->pattern('{control box-%s}')`
+(hodnota podle vzoru sprintf).
 
 - **Stav v adrese:** `list-q`, `list-f[jméno]`, `list-sort`, `list-dir`, `list-page`, `list-perPage`.
   Filtrovaný seznam jde poslat odkazem. „Aktivní filtry“ ukazují hledání a filtry mimo výchozí
@@ -139,6 +142,32 @@ a vrácení — např. pro smazání cache, ze které čte web (Překlady).
 - lišta dole hlásí neuložené změny, při odchodu se stránkou se změnami se prohlížeč zeptá
 - chyby se ukazují u polí, nahoře souhrnná zpráva
 
+
+### Obrázek
+
+```php
+$form->image('photo', 'Fotka')
+	->imageDirectory('contact_persons', static fn (Image $image) => $image->resize(600, 600));
+```
+
+- Soubor se uloží jako `<ID záznamu>.<přípona>` do `userfiles/<adresář>` — stejně jako starý admin
+  (`addImagePicker`), takže web ho najde beze změny. Víc `imageDirectory()` = víc kopií (např.
+  `quick_links/origin` bez úpravy a `quick_links/thumb` zmenšená); náhled ve formuláři je z prvního.
+- Ve formuláři náhled, přetažení nebo výběr souboru, „Odstranit obrázek“. Nový soubor i odstranění se
+  projeví až uložením. Obrázek s jinou příponou nahradí starý (starý soubor se smaže), starší `.webp`
+  vedle se smaže vždy.
+- Povinný obrázek (`->required()`) stačí mít u záznamu z dřívějška.
+- Smazání záznamu soubor nechá (kvůli „Vrátit“) — jako starý admin.
+- Adresáře: `backoffice: userDir:` (výchozí `%wwwDir%/userfiles`) a `userUrl:` (výchozí `/userfiles`).
+- Po uložení každé kopie volá `Backoffice\Media\ImageStorage::$onSave` — projekt tak přidá WebP:
+
+```neon
+decorator:
+	Backoffice\Media\ImageStorage:
+		setup:
+			- '$onSave[]' = [App\WebpConverter, convert]
+```
+
 ## Vlastní obrazovka seznamu (`ListView`)
 
 Když návrh agendy není tabulka (kalendář, nástěnka), agenda vrátí vlastní komponentu:
@@ -170,6 +199,17 @@ Komponenty pro obrazovky: `Backoffice\Resource\View\YearCalendar` (roční kalen
 `bo-split`, `bo-notice`, `bo-stepper`, `bo-rows`, `bo-form-stack`.
 
 Příklad: `App\Stock\Backoffice\HolidayCalendar` v PSE (neobchodní dny podle návrhu).
+
+## Mazání použitých záznamů
+
+Agenda, jejíž záznamy se vkládají do stránek, vrátí z `ResourceDefinition::usages(Entity)` seznam
+míst (`UsageLocation`: název, odkaz, poznámka, vnořená místa); `null` = nesleduje. Použitý záznam:
+
+- koš v řádku a „Smazat“ na stránce záznamu vedou na stránku **Smazat** (`/r/<agenda>/usage/<id>`)
+  se seznamem míst a volbami **Skrýt místo smazání** (má-li entita sloupec `hidden`), **Přesto smazat**
+  a Zpět; obojí s „Vrátit“
+- hromadné smazání ho přeskočí a vypíše
+- sloupec `usage()` ukáže počet míst
 
 ## Mazání
 

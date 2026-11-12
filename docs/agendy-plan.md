@@ -69,8 +69,8 @@ final class HolidayResource extends ResourceDefinition
 | **0. Kostra a API** | třídy, společný presenter, registrace agend, práva přes `replaces`, přepnutí menu a přesměrování | — (popis API, Neobchodní dny jen ke čtení na vlastní adrese) | 2–3 dny |
 | **1. Minimální CRUD** | seznam: text, datum, odkaz, jazyky; formulář: text, textarea, integer, checkbox, select, date, localeText; založení, úprava, smazání, log | **Neobchodní dny** | ~1 týden |
 | **2. Seznamy jako v návrhu** | hledání, filtry + „Aktivní filtry“, řazení, stránkování, výběr + hromadné akce, štítky stavů, inline editace + „Uložit vše“, pořadí přetahováním, „Vrátit“ | Fáze obchodování, Typy události, Kontakty, Rozhodci, Překlady | ~1–1,5 týdne |
-| **3. Média a vazby** | upload obrázků a souborů, výběr vazeb s hledáním | Rychlé odkazy, **Slider**, Kontaktní osoby, Videa, YouTube playlisty, Výroční zprávy, Prezentace | ~1,5 týdne |
-| **4. Rich text a SEO** | Tiptap místo TinyMCE, blok URL + SEO s přesměrováním | Textové boxy, Banery, Příběhy, Layouty, Vstupní stránky, Přesměrování | ~1,5 týdne |
+| **3. Média a vazby** | upload obrázků a souborů, výběr vazeb s hledáním, ochrana mazání použitých záznamů | Kontaktní osoby, Výroční zprávy, Prezentace, Videa, YouTube playlisty, Rychlé odkazy | ~1,5 týdne |
+| **4. Rich text a SEO** | Tiptap místo TinyMCE, blok URL + SEO s přesměrováním | **Slider** (12. 11. 2026 přesunut z etapy 3 — text na slidu potřebuje editor), Textové boxy, Banery, Příběhy, Layouty, Vstupní stránky, Přesměrování | ~1,5 týdne |
 | **5. Velké a složené** | rychlé seznamy nad tisíci záznamy, vnořený seznam v detailu | **Novinky** (9 900, ČTK, vazby na emise), Konzultanti, Galerie, Nastavení | ~2 týdny |
 
 Mimo generátor (vlastní obrazovky později): Menu a editor stránek, Importy, Dokumentace, Emise,

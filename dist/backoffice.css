@@ -579,3 +579,26 @@ button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
 .bo-flash-undo { margin: 0; }
 .bo-flash-undo button { border: 0; background: none; color: inherit; font: 500 13.5px var(--adm-font); text-decoration: underline; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
 .bo-flash-undo button:hover { background: rgba(0, 0, 0, .06); }
+
+/* Obrázek ve formuláři a v seznamu */
+.bo-image { display: flex; gap: 14px; align-items: stretch; max-width: 640px; }
+.bo-image-thumb { flex: 0 0 120px; height: 120px; border-radius: var(--adm-radius-sm); background: var(--adm-surface-2) repeating-conic-gradient(#eef0f4 0 25%, transparent 0 50%) 0 0 / 16px 16px; border: 1px solid var(--adm-line); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.bo-image-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.bo-image-empty { font-size: 12px; color: var(--adm-muted); }
+.bo-image-drop { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 14px 16px; border: 1.5px dashed var(--adm-primary-line); border-radius: var(--adm-radius-sm); background: #fcfaff; color: var(--adm-text-2); font-size: 13.5px; }
+.bo-image-drop:hover, .bo-image.is-dragover .bo-image-drop { border-color: var(--adm-primary); background: var(--adm-primary-soft); }
+.bo-image-drop u { color: var(--adm-primary); }
+.bo-image-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.bo-image-input:focus-visible + .bo-image-text { outline: 2px solid var(--adm-primary); outline-offset: 2px; }
+.bo-image.is-invalid .bo-image-drop { border-color: var(--adm-danger); }
+.bo-image-remove { margin-top: 4px; font-size: 13px; }
+.bo-cell-image { display: block; width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: var(--adm-surface-2); }
+.bo-cell-image-empty { border: 1px dashed var(--adm-line); }
+.bo-usage-list { margin: 6px 0 14px; padding-left: 20px; line-height: 1.7; }
+.bo-usage-list .bo-muted { font-size: 12.5px; margin-left: 4px; }
+.bo-usage-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.bo-usage-actions form { margin: 0; }
+@media (max-width: 600px) {
+	.bo-image { flex-direction: column; }
+	.bo-image-thumb { flex-basis: auto; width: 120px; }
+}

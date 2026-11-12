@@ -71,6 +71,14 @@ final class FormBuilder
 	}
 
 	/**
+	 * Obrázek nahraný do userfiles; adresáře a úpravy přes ->imageDirectory(). Ve sloupci je jméno souboru.
+	 */
+	public function image(string $name, string $label): Field
+	{
+		return $this->add(Field::TYPE_IMAGE, $name, $label);
+	}
+
+	/**
 	 * @return array<string, \Backoffice\Resource\Form\Field>
 	 */
 	public function getFields(): array
