@@ -32,6 +32,8 @@ final class Field
 
 	private ?string $uniqueMessage = null;
 
+	private mixed $default = null;
+
 	public function __construct(
 		public readonly string $type,
 		public readonly string $name,
@@ -44,6 +46,21 @@ final class Field
 		$this->required = $required;
 
 		return $this;
+	}
+
+	/**
+	 * Výchozí hodnota u nového záznamu.
+	 */
+	public function default(mixed $value): self
+	{
+		$this->default = $value;
+
+		return $this;
+	}
+
+	public function getDefault(): mixed
+	{
+		return $this->default;
 	}
 
 	/**

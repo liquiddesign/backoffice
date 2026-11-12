@@ -62,14 +62,25 @@
 			root.classList.remove('bo-side-open');
 		}
 	});
-	// Potvrzení před odesláním (mazání).
+	// Potvrzení před odesláním (mazání) — z tlačítka, nebo z formuláře.
 	document.addEventListener('submit', function (event) {
 		var form = event.target;
+		var submitter = event.submitter;
+		var message = (submitter && submitter.dataset.boConfirm) || (form instanceof HTMLFormElement && form.dataset.boConfirm);
 
-		if (form instanceof HTMLFormElement && form.dataset.boConfirm && !window.confirm(form.dataset.boConfirm)) {
+		if (message && !window.confirm(message)) {
 			event.preventDefault();
 		}
 	}, true);
+
+	// Výběr ve filtru a „Na stránce“ odešle formulář hned.
+	document.addEventListener('change', function (event) {
+		var el = event.target;
+
+		if (el.matches && el.matches('[data-bo-autosubmit]') && el.form) {
+			el.form.requestSubmit();
+		}
+	});
 
 	// Kalendář: klik na volný den zapíše datum do pole (data-bo-pick-target = id pole).
 	// Pole může mít data-bo-weekend-warning — text, který se ukáže u víkendového dne.
@@ -168,4 +179,233 @@
 			}
 		});
 	}
+
+	// Seznam agendy: výběr řádků, úpravy v řádku + „Uložit vše“, pořadí přetažením.
+	document.querySelectorAll('[data-bo-list]').forEach(function (list) {
+		var bar = list.querySelector('.bo-listbar');
+		var selectAll = list.querySelector('[data-bo-select-all]');
+		var selectLabel = list.querySelector('[data-bo-select-label]');
+		var stateLabel = list.querySelector('[data-bo-list-state]');
+		var saveButton = list.querySelector('[data-bo-list-save]');
+		var dirty = false;
+		var submitting = false;
+
+		var boxes = function () {
+			return Array.prototype.slice.call(list.querySelectorAll('[data-bo-select]'));
+		};
+
+		var updateSelection = function () {
+			var all = boxes();
+			var count = all.filter(function (box) { return box.checked; }).length;
+
+			if (selectLabel) {
+				selectLabel.textContent = count === 0 ? 'Nic nevybráno' : 'Vybráno: ' + count;
+			}
+
+			if (selectAll) {
+				selectAll.checked = count > 0 && count === all.length;
+				selectAll.indeterminate = count > 0 && count < all.length;
+			}
+
+			list.querySelectorAll('[data-bo-bulk]').forEach(function (button) {
+				button.disabled = count === 0;
+			});
+		};
+
+		var markDirty = function (row) {
+			if (row) {
+				row.classList.add('is-changed');
+			}
+
+			if (dirty) {
+				return;
+			}
+
+			dirty = true;
+
+			if (bar) {
+				bar.classList.add('is-dirty');
+			}
+
+			if (stateLabel) {
+				stateLabel.textContent = 'Neuložené změny';
+			}
+
+			if (saveButton) {
+				saveButton.disabled = false;
+			}
+		};
+
+		if (selectAll) {
+			selectAll.addEventListener('change', function () {
+				boxes().forEach(function (box) { box.checked = selectAll.checked; });
+				updateSelection();
+			});
+		}
+
+		list.addEventListener('change', function (event) {
+			if (event.target.matches('[data-bo-select]')) {
+				updateSelection();
+			}
+		});
+
+		var onEdit = function (event) {
+			if (event.target.matches('[data-bo-edit]')) {
+				markDirty(event.target.closest('tr'));
+			}
+		};
+
+		list.addEventListener('input', onEdit);
+		list.addEventListener('change', onEdit);
+
+		// Enter v poli řádku = Uložit vše (výchozí tlačítko formuláře by bylo mazání prvního řádku).
+		list.addEventListener('keydown', function (event) {
+			if (event.key !== 'Enter' || !event.target.matches('input[data-bo-edit]')) {
+				return;
+			}
+
+			event.preventDefault();
+
+			if (dirty && saveButton) {
+				list.requestSubmit(saveButton);
+			}
+		});
+
+		list.addEventListener('submit', function (event) {
+			var submitter = event.submitter;
+
+			// Hromadná akce nebo smazání by neuložené úpravy v řádcích zahodily.
+			if (dirty && submitter && submitter.value !== 'save' && !window.confirm('Neuložené změny v řádcích se zahodí. Pokračovat?')) {
+				event.preventDefault();
+
+				return;
+			}
+
+			if (!event.defaultPrevented) {
+				submitting = true;
+			}
+		});
+
+		window.addEventListener('beforeunload', function (event) {
+			if (dirty && !submitting) {
+				event.preventDefault();
+				event.returnValue = '';
+			}
+		});
+
+		document.addEventListener('keydown', function (event) {
+			if (dirty && saveButton && (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S')) {
+				event.preventDefault();
+				list.requestSubmit(saveButton);
+			}
+		});
+
+		updateSelection();
+
+		// Pořadí: přetažení za úchyt (nebo šipky na úchytu) přeskládá řádky a přečísluje pole pořadí
+		// hodnotami, které řádky na stránce už měly — ostatní stránky se tím nerozhodí.
+		var body = list.querySelector('[data-bo-sortable]');
+
+		if (!body) {
+			return;
+		}
+
+		var rows = function () {
+			return Array.prototype.slice.call(body.querySelectorAll('tr[data-bo-row]'));
+		};
+
+		var original = rows().map(function (row) {
+			var input = row.querySelector('[data-bo-priority]');
+
+			return input ? parseInt(input.value, 10) || 0 : 0;
+		}).sort(function (a, b) { return a - b; });
+
+		var unique = original.every(function (value, index) { return index === 0 || value !== original[index - 1]; });
+
+		var renumber = function () {
+			rows().forEach(function (row, index) {
+				var input = row.querySelector('[data-bo-priority]');
+
+				if (!input) {
+					return;
+				}
+
+				var value = String(unique ? original[index] : original[0] + index);
+
+				if (input.value !== value) {
+					input.value = value;
+					markDirty(row);
+				}
+			});
+		};
+
+		var dragged = null;
+
+		body.addEventListener('pointerdown', function (event) {
+			var grip = event.target.closest('[data-bo-grip]');
+
+			if (grip) {
+				grip.closest('tr').draggable = true;
+			}
+		});
+
+		body.addEventListener('dragstart', function (event) {
+			dragged = event.target.closest('tr');
+
+			if (!dragged) {
+				return;
+			}
+
+			dragged.classList.add('is-dragging');
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData('text/plain', '');
+		});
+
+		body.addEventListener('dragover', function (event) {
+			if (!dragged) {
+				return;
+			}
+
+			event.preventDefault();
+			var target = event.target.closest('tr[data-bo-row]');
+
+			if (!target || target === dragged) {
+				return;
+			}
+
+			var rect = target.getBoundingClientRect();
+			body.insertBefore(dragged, event.clientY > rect.top + rect.height / 2 ? target.nextSibling : target);
+		});
+
+		body.addEventListener('dragend', function () {
+			if (!dragged) {
+				return;
+			}
+
+			dragged.classList.remove('is-dragging');
+			dragged.draggable = false;
+			dragged = null;
+			renumber();
+		});
+
+		body.addEventListener('keydown', function (event) {
+			var grip = event.target.closest('[data-bo-grip]');
+
+			if (!grip || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) {
+				return;
+			}
+
+			event.preventDefault();
+			var row = grip.closest('tr');
+			var sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+
+			if (!sibling || !sibling.matches('tr[data-bo-row]')) {
+				return;
+			}
+
+			body.insertBefore(row, event.key === 'ArrowUp' ? sibling : sibling.nextSibling);
+			grip.focus();
+			renumber();
+		});
+	});
 })();

@@ -47,7 +47,13 @@ abstract class ResourceDefinition
 
 	abstract public function list(ListBuilder $list): void;
 
-	abstract public function form(FormBuilder $form): void;
+	/**
+	 * Formulář záznamu. Agenda bez stránky záznamu (Meta::withoutDetail()) ho nepotřebuje.
+	 */
+	public function form(FormBuilder $form): void
+	{
+		unset($form);
+	}
 
 	/**
 	 * Vlastní obrazovka místo tabulky seznamu (např. kalendář). Výchozí null = tabulka podle list().
@@ -55,5 +61,14 @@ abstract class ResourceDefinition
 	public function createListView(): ?ListView
 	{
 		return null;
+	}
+
+	/**
+	 * Zavolá se po každé změně dat agendy (uložení, úprava v seznamu, hromadná akce, smazání, vrácení).
+	 * Např. smazání cache, ze které čte web.
+	 */
+	public function changed(): void
+	{
+		// Výchozí agenda nic navíc nedělá.
 	}
 }

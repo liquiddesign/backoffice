@@ -1,0 +1,186 @@
+{* Seznam agendy podle návrhu „Seznam“ (Backoffice\Resource\List\ListControl). *}
+{varType Backoffice\Resource\List\ListBuilder $list}
+{varType Backoffice\Resource\List\ListControl $control}
+{varType Backoffice\Resource\List\Pager $pager}
+{varType array $rows}
+{varType array $mutations}
+{varType array $localizedColumns}
+{varType array $filterValues}
+{varType array $activeFilters}
+{varType array $perPageOptions}
+{varType string|null $sortKey}
+{varType string $direction}
+{varType bool $canEdit}
+{varType bool $canDelete}
+{varType bool $hasDetail}
+{varType bool $editable}
+{varType bool $selection}
+{varType bool $canReorder}
+{varType string $pkName}
+{var $C = Backoffice\Resource\List\Column::class}
+{var $I = Backoffice\Shell\Icons::class}
+{var $columnCount = count($list->getColumns()) + 1 + ($selection ? 1 : 0) + ($canReorder ? 1 : 0)}
+
+<section n:if="$list->hasSearch() || $list->getFilters()" class="bo-card bo-filter" aria-label="Filtr">
+	<form method="get" action="{link this}" class="bo-filter-row" role="search">
+		<input n:if="$control->sort !== ''" type="hidden" name="{$control->getParameterId('sort')}" value="{$control->sort}">
+		<input n:if="$control->dir !== ''" type="hidden" name="{$control->getParameterId('dir')}" value="{$control->dir}">
+		<input n:if="$control->perPage" type="hidden" name="{$control->getParameterId('perPage')}" value="{$control->perPage}">
+		<div n:if="$list->hasSearch()" class="bo-filter-item bo-filter-search">
+			<label class="bo-filter-label" for="{$control->getUniqueId()}-q">Hledat</label>
+			<div class="bo-search-input">
+				{$I::get('search', 16)}
+				<input id="{$control->getUniqueId()}-q" class="bo-input" type="search" name="{$control->getParameterId('q')}" value="{$control->q}" placeholder="{$list->getSearchPlaceholder()}">
+			</div>
+		</div>
+		<div n:foreach="$list->getFilters() as $filter" class="bo-filter-item">
+			<label class="bo-filter-label" for="{$control->getUniqueId()}-f-{$filter->name}">{$filter->label}</label>
+			<select id="{$control->getUniqueId()}-f-{$filter->name}" class="bo-input" name="{$control->getParameterId('f')}[{$filter->name}]" data-bo-autosubmit>
+				<option n:if="$filter->getPrompt() !== null" value="">{$filter->getPrompt()}</option>
+				<option n:foreach="$filter->getItems() as $value => $label" value="{$value}" n:attr="selected: (string) $value === $filterValues[$filter->name]">{$label}</option>
+			</select>
+		</div>
+		<button type="submit" class="bo-btn bo-btn-primary">Filtrovat</button>
+	</form>
+	<div n:if="$activeFilters" class="bo-active-filters">
+		<span class="bo-muted">Aktivní filtry:</span>
+		<span n:foreach="$activeFilters as $name => $label" class="bo-pill bo-pill-brand bo-pill-removable">{$label}<a href="{$control->withoutFilterLink((string) $name)}" aria-label="Odebrat filtr {$label}">×</a></span>
+		<a href="{$control->withoutFilterLink('*')}" class="bo-active-filters-reset">Zrušit vše</a>
+	</div>
+</section>
+
+<section class="bo-card bo-list" aria-label="Seznam">
+	<form method="post" action="{link submit!}" id="{$control->getUniqueId()}-form" data-bo-list>
+		{* Výchozí tlačítko (Enter v poli): uložit, ne smazat první řádek. *}
+		<button type="submit" name="action" value="save" class="bo-sr-only" tabindex="-1" aria-hidden="true"></button>
+		<div class="bo-table-wrap">
+			<table class="bo-table bo-list-table">
+				<thead>
+					<tr>
+						<th n:if="$selection" class="bo-th-check"><input type="checkbox" class="bo-chk" aria-label="Vybrat vše" data-bo-select-all></th>
+						<th n:if="$canReorder" class="bo-th-grip"><span class="bo-sr-only">Přetáhnout</span></th>
+						<th n:foreach="$list->getColumns() as $column" n:class="in_array($column->type, [$C::TYPE_INTEGER, $C::TYPE_PRIORITY, $C::TYPE_CHECKBOX], true) ? bo-th-narrow">
+							{if $column->isSortable()}
+								<a href="{$control->sortLink($column)}" n:class="bo-th-sort, $sortKey === $column->key ? is-active">
+									{$column->label}
+									{if $sortKey === $column->key}{$I::get($direction === 'ASC' ? 'chevron-up' : 'chevron-down', 14)}<span class="bo-sr-only">{$direction === 'ASC' ? 'vzestupně' : 'sestupně'}</span>{/if}
+								</a>
+							{else}
+								{$column->label}
+							{/if}
+						</th>
+						<th class="bo-th-actions"><span class="bo-sr-only">Akce</span></th>
+					</tr>
+				</thead>
+				<tbody n:attr="data-bo-sortable: $canReorder">
+					<tr n:foreach="$rows as $row" data-bo-row>
+						{var $pk = (string) $row->getPK()}
+						<td n:if="$selection" class="bo-td-check"><input type="checkbox" class="bo-chk" name="ids[]" value="{$pk}" aria-label="Vybrat řádek" data-bo-select></td>
+						<td n:if="$canReorder" class="bo-td-grip"><button type="button" class="bo-grip" data-bo-grip aria-label="Přesunout (šipky nahoru a dolů)" title="Přetažením změníte pořadí">{$I::get('grip', 16)}</button></td>
+						<td n:foreach="$list->getColumns() as $column" n:class="$column->isMono() ? bo-mono, $column->type === $C::TYPE_DATE ? bo-nowrap">
+							{var $field = 'row[' . $pk . '][' . $column->key . ']'}
+							{if $column->type === $C::TYPE_MUTATIONS}
+								<span class="bo-pills">
+								{foreach $mutations as $mutation}
+									{if $column->mutation !== null}
+										{var $filled = (bool) $row->getValue($column->mutation, $mutation)}
+									{else}
+										{var $filled = false}
+										{foreach $localizedColumns as $localized}
+											{if (string) $row->getValue($localized, $mutation) !== ''}{var $filled = true}{/if}
+										{/foreach}
+									{/if}
+									<span n:class="bo-pill, $filled ? bo-pill-brand" title="{$filled ? 'vyplněno' : 'nevyplněno'}">{$mutation|upper}</span>
+								{/foreach}
+								</span>
+							{elseif $column->type === $C::TYPE_STATUS}
+								{var $state = $column->getState($row->getValue($column->name))}
+								<span n:if="$state" class="bo-pill bo-pill-{$state[1]}">{$state[0]}</span>
+							{elseif $column->type === $C::TYPE_CHECKBOX}
+								{if $column->isEditable() && $canEdit}
+									<input type="hidden" name="{$field}" value="0">
+									<input type="checkbox" role="switch" class="bo-switch" name="{$field}" value="1" n:attr="checked: (bool) $row->getValue($column->name)" aria-label="{$column->label}" data-bo-edit>
+								{elseif $row->getValue($column->name)}
+									{$I::get('check', 16)}<span class="bo-sr-only">ano</span>
+								{else}
+									<span class="bo-muted">—</span>
+								{/if}
+							{elseif $column->isEditable() && $canEdit}
+								{var $value = $row->getValue($column->name, $column->mutation)}
+								{if in_array($column->type, [$C::TYPE_INTEGER, $C::TYPE_PRIORITY], true)}
+									<input type="number" step="1" class="bo-input bo-cell-input bo-cell-number" name="{$field}" value="{$value}" aria-label="{$column->label}" data-bo-edit n:attr="data-bo-priority: $column->type === $C::TYPE_PRIORITY">
+								{else}
+									<input type="text" class="bo-input bo-cell-input" name="{$field}" value="{$value}" aria-label="{$column->label}" data-bo-edit>
+								{/if}
+							{else}
+								{var $value = $control->cellValue($row, $column)}
+								{if $column->isLink() && $hasDetail}
+									<a class="bo-cell-link" href="{plink edit id => $pk}">{$value === null || $value === '' ? '(bez názvu)' : $value}</a>
+								{elseif $value === null || $value === ''}
+									<span class="bo-muted">—</span>
+								{else}
+									{$value}
+								{/if}
+							{/if}
+						</td>
+						<td class="bo-td-actions">
+							<div class="bo-row-actions">
+								<a n:if="$hasDetail" class="bo-btn bo-btn-ghost bo-btn-icon" href="{plink edit id => $pk}" aria-label="Upravit" title="Upravit">{$I::get('edit', 16)}</a>
+								<button n:if="$canDelete" type="submit" name="action" value="delete-row:{$pk}" class="bo-btn bo-btn-ghost bo-btn-icon bo-btn-danger-text" aria-label="Smazat" title="Smazat" data-bo-confirm="Smazat záznam?">{$I::get('trash', 16)}</button>
+							</div>
+						</td>
+					</tr>
+					<tr n:if="!$rows">
+						<td colspan="{$columnCount + 1}" class="bo-empty">
+							{if $activeFilters}
+								Filtru nic neodpovídá. <a href="{$control->withoutFilterLink('*')}">Zrušit filtry</a>
+							{else}
+								Zatím žádné záznamy.
+							{/if}
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+
+		<div class="bo-listbar">
+			{if $selection}
+				<span class="bo-listbar-sel" data-bo-select-label>Nic nevybráno</span>
+				<button n:foreach="$list->getBulkActions() as $index => $action" type="submit" name="action" value="bulk-{$index}" class="bo-btn bo-btn-outline bo-btn-sm" data-bo-bulk disabled>{$action->label}</button>
+				<button n:if="$list->hasBulkDelete() && $canDelete" type="submit" name="action" value="delete" class="bo-btn bo-btn-sm bo-btn-danger-outline" data-bo-bulk data-bo-confirm="Smazat vybrané záznamy?" disabled>{$I::get('trash', 16)}Smazat</button>
+			{/if}
+			{if $editable && $rows}
+				<span class="bo-listbar-state" data-bo-list-state>{$canReorder ? 'Pořadí změníte přetažením za úchyt' : 'Hodnoty upravíte přímo v řádcích'}</span>
+				<button type="submit" name="action" value="save" class="bo-btn bo-btn-primary bo-btn-sm" data-bo-list-save disabled>Uložit vše</button>
+			{/if}
+			<span class="bo-spacer"></span>
+			<span class="bo-muted bo-hide-sm">{if $pager->total > 0}{$pager->firstItem()}–{$pager->lastItem()} z {/if}{$pager->total}</span>
+			<label n:if="$pager->total > min($perPageOptions)" class="bo-muted bo-hide-sm bo-listbar-perpage">Na stránce
+				<select class="bo-input" name="{$control->getParameterId('perPage')}" form="{$control->getUniqueId()}-perpage" data-bo-autosubmit>
+					<option n:foreach="$perPageOptions as $option" value="{$option}" n:attr="selected: $option === $pager->perPage">{$option}</option>
+				</select>
+			</label>
+			<nav n:if="$pager->pages > 1" class="bo-pages" aria-label="Stránkování">
+				<a n:if="$pager->page > 1" class="bo-pg" n:href="this page => $pager->page - 1" aria-label="Předchozí stránka">‹</a>
+				{foreach $pager->numbers() as $number}
+					{if $number === null}
+						<span class="bo-muted bo-pg-gap">…</span>
+					{elseif $number === $pager->page}
+						<span class="bo-pg is-current" aria-current="page">{$number}</span>
+					{else}
+						<a class="bo-pg" n:href="this page => $number">{$number}</a>
+					{/if}
+				{/foreach}
+				<a n:if="$pager->page < $pager->pages" class="bo-pg" n:href="this page => $pager->page + 1" aria-label="Další stránka">›</a>
+			</nav>
+		</div>
+	</form>
+	<form method="get" action="{link this}" id="{$control->getUniqueId()}-perpage" hidden>
+		<input n:if="$control->q !== ''" type="hidden" name="{$control->getParameterId('q')}" value="{$control->q}">
+		{foreach $filterValues as $name => $value}
+			<input n:if="$value !== null && $value !== $list->getFilters()[$name]->getDefault()" type="hidden" name="{$control->getParameterId('f')}[{$name}]" value="{$value}">
+		{/foreach}
+		<input n:if="$control->sort !== ''" type="hidden" name="{$control->getParameterId('sort')}" value="{$control->sort}">
+		<input n:if="$control->dir !== ''" type="hidden" name="{$control->getParameterId('dir')}" value="{$control->dir}">
+	</form>
+</section>

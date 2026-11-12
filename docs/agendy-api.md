@@ -74,21 +74,62 @@ backoffice:
 
 ## Seznam (`ListBuilder`)
 
+Tabulka podle návrhu „Seznam“: filtr nahoře, tabulka, lišta dole (výběr, Uložit vše, počet,
+„Na stránce“, stránky). Vykresluje ji `ListControl` (komponenta `list` na `ResourcePresenter`).
+
 | Metoda | Co dělá |
 |---|---|
-| `text(name, label)` | textový sloupec (jazykový sloupec ukáže aktuální jazyk) |
+| `text(name, label, mutation = null)` | text; jazykový sloupec v aktuálním jazyce, s `mutation` v pevném (`Text CS`, `Text EN`) |
 | `date(name, label)` | datum, formát `j. n. Y` (`->format()`) |
-| `mutations(label = 'Jazyky')` | štítky jazyků, ve kterých má záznam vyplněné jazykové sloupce seznamu |
+| `integer(name, label)` | číslo |
+| `checkbox(name, label)` | ano/ne; s `->editable()` přepínač v řádku |
+| `status(name, label, [hodnota => [štítek, varianta]])` | štítek stavu (ok, info, warn, danger, brand, mute) |
+| `priority(name = 'priority')` | pořadí: číslo v řádku + přetahování za úchyt, výchozí řazení |
+| `mutations(label = 'Jazyky', column = null)` | štítky jazyků: vyplněné jazykové sloupce, nebo podle booleovského sloupce (`active`) |
+| `search(placeholder)` | text v poli „Hledat“; hledá se ve sloupcích s `->searchable()` |
+| `filter(name, label, items)` | výběr; bez `->condition()` filtruje `sloupec = hodnota`; `->default()` = bez „Všechny“ |
+| `bulkSet(column, value, label)` | hromadná akce nad vybranými řádky (Skrýt, Zobrazit) |
+| `bulkDelete()` | výběr řádků + „Smazat“ v liště |
 | `defaultSort(column, dir)` / `Column::defaultSort(dir)` | výchozí řazení |
-| `bulkDelete()` | výběr řádků + hromadné smazání (etapa 2) |
-| `perPage(n)` | počet řádků na stránku (výchozí 50) |
+| `perPage(n)` | počet řádků na stránku (výchozí 50; v liště jde přepnout 20/50/100/200) |
 
-Sloupec: `->sortable()`, `->searchable()` (etapa 2), `->link()` (odkaz na detail), `->format()`.
+Sloupec: `->sortable()` (klik na hlavičku), `->searchable()`, `->link()` (odkaz na stránku záznamu),
+`->editable()` (text, číslo, zaškrtávátko), `->mono()`, `->format()`.
+
+- **Stav v adrese:** `list-q`, `list-f[jméno]`, `list-sort`, `list-dir`, `list-page`, `list-perPage`.
+  Filtrovaný seznam jde poslat odkazem. „Aktivní filtry“ ukazují hledání a filtry mimo výchozí
+  hodnotu; × jeden odebere, „Zrušit vše“ vrátí výchozí stav.
+- **Hledání:** `LIKE %text%` přes hledané sloupce, jazykový sloupec ve všech jazycích.
+- **Úpravy v řádku:** jeden formulář přes celou tabulku, „Uložit vše“ (nebo Enter, Ctrl S) uloží jen
+  změněné hodnoty. Neplatné číslo = neuloží se nic. Změněné řádky jsou zvýrazněné, odchod ze stránky
+  s neuloženými změnami se zeptá.
+- **Pořadí:** přetažení (nebo šipky na úchytu) jen při řazení podle pořadí vzestupně. Řádky dostanou
+  čísla, která na stránce už měly (při shodných hodnotách od nejmenšího po jedné), ukládá se s „Uložit vše“.
+- **Vrátit:** po uložení v řádcích, hromadné akci a smazání (i ze stránky záznamu) má flash zpráva
+  „Vrátit“. Upravené hodnoty se vrátí, smazané záznamy se založí znovu se stejným ID. Pamatuje se
+  posledních 10 akcí v session. Smazání, které odmítne databáze (cizí klíče), se nahlásí a nic nesmaže.
+  Vrácení obnoví jen řádek agendy, ne data, která databáze smazala kaskádou.
+- **Práva:** úpravy v řádku, hromadné akce a mazání = právo na detail (`:…:detail`).
+
+### Agenda bez zakládání, mazání nebo stránky záznamu
+
+Číselníky z importu (Fáze obchodování, Typy události, Překlady):
+
+```php
+$meta->withoutCreate()->withoutDelete()->withoutDetail();
+```
+
+Bez stránky záznamu agenda nepotřebuje `form()` (má výchozí prázdnou implementaci).
+
+### Po změně dat
+
+`ResourceDefinition::changed()` se volá po každém uložení, úpravě v řádku, hromadné akci, smazání
+a vrácení — např. pro smazání cache, ze které čte web (Překlady).
 
 ## Formulář (`FormBuilder`)
 
 `section(title)`, `text`, `textarea`, `integer`, `checkbox`, `select(items)`, `date`,
-`localeText`, `localeTextarea`. Pole: `->required()`, `->description()`, `->items()`,
+`localeText`, `localeTextarea`. Pole: `->required()`, `->description()`, `->items()`, `->default()`,
 `->unique(zpráva)` (hodnota se v agendě nesmí opakovat; kontrola při uložení, chyba u pole).
 
 - jazyková pole: kontejner `name[cs]`, `name[en]` vedle sebe; povinný je jen hlavní (první) jazyk
@@ -132,8 +173,10 @@ Příklad: `App\Stock\Backoffice\HolidayCalendar` v PSE (neobchodní dny podle n
 
 ## Mazání
 
-Tlačítko „Smazat“ v řádku seznamu posílá POST (signál `delete!` s `#[Requires(methods: 'POST', sameOrigin: true)]`)
-a ptá se na potvrzení. Totéž tlačítko je vlevo v liště stránky záznamu. Oprávnění jako pro úpravu (`…:detail`).
+Ikona koše v řádku seznamu a hromadné „Smazat“ jdou přes formulář seznamu (signál `list-submit!`),
+„Smazat“ v liště stránky záznamu přes signál `delete!`. Obojí jen POST ze stejného webu
+(`#[Requires(methods: 'POST', sameOrigin: true)]`), s potvrzením a s „Vrátit“ ve flash zprávě.
+Oprávnění jako pro úpravu (`…:detail`); `Meta::withoutDelete()` mazání vypne.
 
 ## Log změn
 

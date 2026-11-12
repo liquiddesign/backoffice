@@ -38,6 +38,10 @@ final class FormFactory
 
 			$control = $this->createControl($form, $field);
 
+			if ($field->getDefault() !== null) {
+				$control->setDefaultValue($field->getDefault());
+			}
+
 			if (!$field->isRequired() || $field->type === Field::TYPE_CHECKBOX) {
 				continue;
 			}

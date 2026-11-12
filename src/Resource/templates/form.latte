@@ -23,5 +23,5 @@
 		</div>
 	</form>
 
-	<form n:if="$entity && $canDelete" id="bo-delete-form" method="post" action="{link delete! id => $entity->getPK()}" class="bo-delete-form" data-bo-confirm="Smazat záznam? Akci nelze vrátit." data-bo-no-guard></form>
+	<form n:if="$entity && $canDelete" id="bo-delete-form" method="post" action="{link delete! id => $entity->getPK()}" class="bo-delete-form" data-bo-confirm="Smazat záznam?" data-bo-no-guard></form>
 {/block}

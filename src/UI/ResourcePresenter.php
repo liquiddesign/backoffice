@@ -6,7 +6,7 @@ namespace Backoffice\UI;
 
 use Backoffice\Resource\Form\Field;
 use Backoffice\Resource\Form\FormFactory;
-use Backoffice\Resource\List\Column;
+use Backoffice\Resource\List\ListControl;
 use Backoffice\Resource\ListView;
 use Backoffice\Resource\ResourceDefinition;
 use Backoffice\Resource\ResourceRegistry;
@@ -15,6 +15,7 @@ use Nette\Application\Attributes\Persistent;
 use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\DI\Attributes\Inject;
+use Nette\Utils\Random;
 use StORM\Entity;
 
 /**
@@ -22,6 +23,9 @@ use StORM\Entity;
  */
 final class ResourcePresenter extends BackofficePresenter
 {
+	/** Kolik posledních vratných změn si session pamatuje (tlačítko „Vrátit“). */
+	private const UNDO_LIMIT = 10;
+
 	#[Persistent]
 	public string $resource = '';
 
@@ -51,10 +55,9 @@ final class ResourcePresenter extends BackofficePresenter
 		parent::checkRequirements($element);
 	}
 
-	public function renderDefault(int $page = 1): void
+	public function renderDefault(): void
 	{
-		$definition = $this->getDefinition();
-		$meta = $definition->getMeta();
+		$meta = $this->getDefinition()->getMeta();
 
 		$this->title = $meta->getTitle();
 		$this->breadcrumbs = [[$meta->getTitle()]];
@@ -66,35 +69,23 @@ final class ResourcePresenter extends BackofficePresenter
 			return;
 		}
 
-		$list = $definition->buildList();
-		$repository = $meta->getRepository();
-
-		$collection = $repository->many();
-		$sort = $list->getDefaultSort();
-
-		if ($sort !== null) {
-			$collection->orderBy(['this.' . $sort => $list->getDefaultDirection()]);
-		}
-
-		$total = $collection->enum();
-		$pages = \max(1, (int) \ceil($total / $list->getPerPage()));
-		$page = \min(\max(1, $page), $pages);
-		$collection->page($page, $list->getPerPage());
-
 		$this->buttons = $this->defaultButtons();
-
-		$this->template->list = $list;
-		$this->template->rows = $collection->toArray();
-		$this->template->total = $total;
-		$this->template->page = $page;
-		$this->template->pages = $pages;
-		$this->template->mutations = $this->mutations();
-		$this->template->localizedColumns = $this->localizedColumns($definition);
 		$this->template->setFile(__DIR__ . '/../Resource/templates/default.latte');
+	}
+
+	public function actionNew(): void
+	{
+		if (!$this->getDefinition()->getMeta()->hasCreate()) {
+			$this->error('Agenda nemá zakládání záznamů.');
+		}
 	}
 
 	public function actionEdit(string $id): void
 	{
+		if (!$this->getDefinition()->getMeta()->hasDetail()) {
+			$this->error('Agenda nemá stránku záznamu.');
+		}
+
 		$this->entity = $this->getDefinition()->getMeta()->getRepository()->one($id) ?? $this->error('Záznam nenalezen.');
 
 		if ($this['form']->isSubmitted()) {
@@ -132,7 +123,7 @@ final class ResourcePresenter extends BackofficePresenter
 	{
 		$meta = $this->getDefinition()->getMeta();
 
-		if (!$this->isAllowedAction('edit')) {
+		if (!$this->canDelete()) {
 			$this->error('Na mazání nemáte oprávnění.', 403);
 		}
 
@@ -140,25 +131,131 @@ final class ResourcePresenter extends BackofficePresenter
 
 		if ($entity !== null) {
 			$title = $this->entityTitle($entity);
+			$data = $entity->toArray();
 
 			if ($this->hasListView()) {
 				$this->getListView()->focus($entity);
 			}
 
-			$entity->delete();
+			try {
+				$entity->delete();
+			} catch (\PDOException) {
+				$this->flashMessage("Záznam „{$title}“ nejde smazat — nejspíš se na něj odkazují jiná data.", 'error');
+				$this->redirect('default', $this->listParameters());
+			}
+
 			$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_DELETE, $id);
-			$this->flashMessage("Smazáno: $title", 'success');
+			$this->getDefinition()->changed();
+			$this->flashWithUndo("Smazáno: $title", [['restore', $id, $data]]);
 		}
 
 		$this->redirect('default', $this->listParameters());
 	}
 
 	/**
+	 * Vrátí změnu z flash zprávy („Vrátit“): smazané záznamy založí znovu, upravené vrátí na původní
+	 * hodnoty. Změna se pamatuje v session jen pro tuto agendu a posledních pár akcí.
+	 */
+	#[Requires(methods: 'POST', sameOrigin: true)]
+	public function handleUndo(string $token): void
+	{
+		$meta = $this->getDefinition()->getMeta();
+		$section = $this->getSession('backoffice.undo');
+		/** @var array<string, array{resource: string, ops: list<array{string, string, array<string, mixed>}>}> $stack */
+		$stack = $section->get('stack') ?? [];
+		$entry = $stack[$token] ?? null;
+
+		if ($entry === null || $entry['resource'] !== $meta->getSlug()) {
+			$this->flashMessage('Tuhle změnu už vrátit nejde.', 'warning');
+			$this->redirect('default');
+		}
+
+		unset($stack[$token]);
+		$section->set('stack', $stack);
+		$repository = $meta->getRepository();
+		$restored = 0;
+
+		foreach ($entry['ops'] as [$type, $id, $data]) {
+			if ($type === 'restore') {
+				if ($repository->one($id) !== null || !$this->isAllowedAction('edit')) {
+					continue;
+				}
+
+				$repository->createOne($data);
+				$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_NEW, $id);
+				$restored++;
+
+				continue;
+			}
+
+			$entity = $repository->one($id);
+
+			if ($entity === null || !$this->isAllowedAction('edit')) {
+				continue;
+			}
+
+			$entity->update($data);
+			$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_DETAIL, $id);
+			$restored++;
+		}
+
+		$this->getDefinition()->changed();
+		$this->flashMessage($restored > 0 ? 'Vráceno.' : 'Nebylo co vracet.', $restored > 0 ? 'success' : 'warning');
+		$this->redirect('default', $this->listParameters());
+	}
+
+	/**
 	 * Má uživatel právo na akci agendy (default, edit, new)? Ptá se stejně jako při vstupu na stránku.
+	 * Zakládání vypnuté v Meta (withoutCreate) se bere jako bez práva.
 	 */
 	public function isAllowedAction(string $action): bool
 	{
-		return $this->shell->access->isAllowed($this->getDefinition()->getMeta()->permissionLink($action));
+		$meta = $this->getDefinition()->getMeta();
+
+		if ($action === 'new' && !$meta->hasCreate()) {
+			return false;
+		}
+
+		return $this->shell->access->isAllowed($meta->permissionLink($action));
+	}
+
+	/**
+	 * Mazání: právo na úpravu a agenda mazání nevypnula (Meta::withoutDelete()).
+	 */
+	public function canDelete(): bool
+	{
+		return $this->getDefinition()->getMeta()->hasDelete() && $this->isAllowedAction('edit');
+	}
+
+	/**
+	 * Zápis do logu změn pod názvem agendy (ChangeLogger::TYPE_*).
+	 */
+	public function logChange(string $type, string $id): void
+	{
+		$this->changeLogger->log($this->getDefinition()->getMeta()->getTitle(), $type, $id);
+	}
+
+	/**
+	 * Flash zpráva s tlačítkem „Vrátit“. Operace: ['update', id, původní hodnoty] nebo
+	 * ['restore', id, Entity::toArray() smazaného záznamu].
+	 * @param list<array{string, string, array<string, mixed>}> $ops
+	 */
+	public function flashWithUndo(string $message, array $ops): void
+	{
+		$flash = $this->flashMessage($message, 'success');
+
+		if ($ops === []) {
+			return;
+		}
+
+		$section = $this->getSession('backoffice.undo');
+		/** @var array<string, array{resource: string, ops: list<array{string, string, array<string, mixed>}>}> $stack */
+		$stack = $section->get('stack') ?? [];
+		$token = Random::generate(12);
+		$stack[$token] = ['resource' => $this->getDefinition()->getMeta()->getSlug(), 'ops' => $ops];
+		$section->set('stack', \array_slice($stack, -self::UNDO_LIMIT, null, true));
+		// Na seznam, ne na „this“: po smazání ze stránky záznamu by adresa vedla na smazaný záznam.
+		$flash->undo = $this->link('default', [self::SignalKey => 'undo', 'token' => $token] + $this->listParameters());
 	}
 
 	/**
@@ -217,6 +314,7 @@ final class ResourcePresenter extends BackofficePresenter
 			}
 
 			$this->changeLogger->log($meta->getTitle(), $type, (string) $entity->getPK());
+			$definition->changed();
 
 			if ($this->hasListView()) {
 				$this->getListView()->focus($entity);
@@ -244,6 +342,11 @@ final class ResourcePresenter extends BackofficePresenter
 		return $form;
 	}
 
+	protected function createComponentList(): ListControl
+	{
+		return new ListControl();
+	}
+
 	protected function createComponentView(): ListView
 	{
 		return $this->getDefinition()->createListView() ?? $this->error('Agenda nemá vlastní obrazovku seznamu.');
@@ -261,7 +364,7 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->template->mutations = $this->mutations();
 		$this->template->entity = $this->entity;
 		$this->template->fieldsTemplate = Field::TEMPLATE;
-		$this->template->canDelete = $this->isAllowedAction('edit');
+		$this->template->canDelete = $this->canDelete();
 		$this->template->setFile(__DIR__ . '/../Resource/templates/form.latte');
 	}
 
@@ -342,30 +445,6 @@ final class ResourcePresenter extends BackofficePresenter
 	private function getEntity(): Entity
 	{
 		return $this->entity ?? throw new \LogicException('Záznam není načtený.');
-	}
-
-	/**
-	 * Jazykové sloupce entity — pro sloupec „Jazyky“ (které jazyky má záznam vyplněné).
-	 * @return list<string>
-	 */
-	private function localizedColumns(ResourceDefinition $definition): array
-	{
-		$structure = $definition->getMeta()->getRepository()->getStructure();
-		$names = [];
-
-		foreach ($definition->buildList()->getColumns() as $column) {
-			if ($column->type === Column::TYPE_MUTATIONS) {
-				continue;
-			}
-
-			if (!$structure->getColumn($column->name)?->hasMutations()) {
-				continue;
-			}
-
-			$names[] = $column->name;
-		}
-
-		return $names;
 	}
 
 	private function entityTitle(Entity $entity): string

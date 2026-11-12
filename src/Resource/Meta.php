@@ -27,6 +27,12 @@ final class Meta
 
 	private ?string $icon = null;
 
+	private bool $create = true;
+
+	private bool $delete = true;
+
+	private bool $detail = true;
+
 	public function slug(string $slug): self
 	{
 		if (!\preg_match('~^[a-z][a-z0-9-]*$~', $slug)) {
@@ -83,6 +89,48 @@ final class Meta
 		$this->icon = $icon;
 
 		return $this;
+	}
+
+	/**
+	 * Agenda bez zakládání záznamů (data přicházejí importem).
+	 */
+	public function withoutCreate(): self
+	{
+		$this->create = false;
+
+		return $this;
+	}
+
+	public function withoutDelete(): self
+	{
+		$this->delete = false;
+
+		return $this;
+	}
+
+	/**
+	 * Agenda bez stránky záznamu — upravuje se jen v řádku seznamu.
+	 */
+	public function withoutDetail(): self
+	{
+		$this->detail = false;
+
+		return $this;
+	}
+
+	public function hasCreate(): bool
+	{
+		return $this->create;
+	}
+
+	public function hasDelete(): bool
+	{
+		return $this->delete;
+	}
+
+	public function hasDetail(): bool
+	{
+		return $this->detail;
 	}
 
 	public function getSlug(): string

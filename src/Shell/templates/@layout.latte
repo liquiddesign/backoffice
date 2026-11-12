@@ -82,6 +82,7 @@
 				<div n:if="$flashes" class="bo-flashes" role="status">
 					<div n:foreach="$flashes as $flash" class="bo-flash bo-flash-{$flash->type}">
 						<span>{$flash->message}</span>
+						<form n:if="isset($flash->undo)" method="post" action="{$flash->undo}" class="bo-flash-undo"><button type="submit">Vrátit</button></form>
 						<button type="button" class="bo-flash-close" data-bo-dismiss aria-label="Zavřít">{Backoffice\Shell\Icons::get('close', 14)}</button>
 					</div>
 				</div>
