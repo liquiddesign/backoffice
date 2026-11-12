@@ -410,7 +410,7 @@
 	});
 
 	// Obrázek ve formuláři: náhled vybraného souboru, zvýraznění při přetahování.
-	document.querySelectorAll('[data-bo-image]').forEach(function (box) {
+	document.querySelectorAll('[data-bo-image], [data-bo-file]').forEach(function (box) {
 		var input = box.querySelector('input[type=file]');
 		var preview = box.querySelector('[data-bo-image-preview]');
 		var empty = box.querySelector('[data-bo-image-empty]');
@@ -451,6 +451,144 @@
 
 			if (remove) {
 				remove.checked = false;
+			}
+		});
+	});
+
+	// Pole vidět jen při určité hodnotě jiného pole (Field::visibleWhen()).
+	document.querySelectorAll('[data-bo-when]').forEach(function (wrap) {
+		var form = wrap.closest('form');
+		var values = JSON.parse(wrap.dataset.boWhenValues || '[]');
+		var source = form && form.elements.namedItem(wrap.dataset.boWhen);
+
+		if (!source) {
+			return;
+		}
+
+		var update = function () {
+			var value = source instanceof RadioNodeList ? source.value : source.value;
+			wrap.hidden = values.indexOf(value) === -1;
+		};
+
+		form.addEventListener('change', function (event) {
+			if (event.target.name === wrap.dataset.boWhen) {
+				update();
+			}
+		});
+		update();
+	});
+
+	// Vazba s hledáním (FormBuilder::relation()): napsat část názvu, vybrat ze seznamu.
+	document.querySelectorAll('[data-bo-lookup]').forEach(function (box) {
+		var url = box.dataset.boLookup;
+		var input = box.querySelector('[data-bo-lookup-input]');
+		var hidden = box.querySelector('[data-bo-lookup-value]');
+		var list = box.querySelector('[data-bo-lookup-list]');
+		var timer = null;
+		var items = [];
+		var active = -1;
+		var selectedLabel = input.value;
+
+		var close = function () {
+			list.hidden = true;
+			input.setAttribute('aria-expanded', 'false');
+			active = -1;
+		};
+
+		var highlight = function (index) {
+			var nodes = list.querySelectorAll('li[role=option]');
+			active = Math.max(-1, Math.min(index, nodes.length - 1));
+			nodes.forEach(function (node, i) { node.setAttribute('aria-selected', i === active ? 'true' : 'false'); });
+
+			if (active >= 0) {
+				nodes[active].scrollIntoView({ block: 'nearest' });
+				input.setAttribute('aria-activedescendant', nodes[active].id);
+			}
+		};
+
+		var choose = function (item) {
+			hidden.value = item.id;
+			input.value = item.label;
+			selectedLabel = item.label;
+			close();
+			hidden.dispatchEvent(new Event('change', { bubbles: true }));
+		};
+
+		var render = function () {
+			list.innerHTML = '';
+
+			if (items.length === 0) {
+				var empty = document.createElement('li');
+				empty.className = 'is-empty';
+				empty.textContent = 'Nic nenalezeno';
+				list.appendChild(empty);
+			}
+
+			items.forEach(function (item, i) {
+				var li = document.createElement('li');
+				li.setAttribute('role', 'option');
+				li.id = list.id + '-' + i;
+				li.textContent = item.label;
+				li.addEventListener('mousedown', function (event) {
+					event.preventDefault();
+					choose(item);
+				});
+				list.appendChild(li);
+			});
+
+			list.hidden = false;
+			input.setAttribute('aria-expanded', 'true');
+			highlight(items.length ? 0 : -1);
+		};
+
+		var search = function () {
+			var sep = url.indexOf('?') === -1 ? '?' : '&';
+			fetch(url + sep + 'q=' + encodeURIComponent(input.value), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+				.then(function (response) { return response.ok ? response.json() : []; })
+				.then(function (data) { items = Array.isArray(data) ? data : []; render(); })
+				.catch(function () { items = []; render(); });
+		};
+
+		input.addEventListener('input', function () {
+			if (input.value === '') {
+				hidden.value = '';
+				hidden.dispatchEvent(new Event('change', { bubbles: true }));
+			}
+
+			clearTimeout(timer);
+			timer = setTimeout(search, 200);
+		});
+
+		input.addEventListener('focus', function () {
+			if (list.hidden) {
+				search();
+			}
+		});
+
+		input.addEventListener('keydown', function (event) {
+			if (event.key === 'ArrowDown') {
+				event.preventDefault();
+				list.hidden ? search() : highlight(active + 1);
+			} else if (event.key === 'ArrowUp') {
+				event.preventDefault();
+				highlight(active - 1);
+			} else if (event.key === 'Enter' && !list.hidden) {
+				event.preventDefault();
+
+				if (active >= 0 && items[active]) {
+					choose(items[active]);
+				}
+			} else if (event.key === 'Escape') {
+				close();
+			}
+		});
+
+		input.addEventListener('blur', function () {
+			close();
+
+			// Napsaný text bez výběru ze seznamu se nepočítá — vrátit vybranou položku.
+			if (input.value !== '' && input.value !== selectedLabel) {
+				input.value = selectedLabel;
 			}
 		});
 	});

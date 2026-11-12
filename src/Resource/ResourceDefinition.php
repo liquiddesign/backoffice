@@ -6,6 +6,7 @@ namespace Backoffice\Resource;
 
 use Backoffice\Resource\Form\FormBuilder;
 use Backoffice\Resource\List\ListBuilder;
+use Nette\Application\UI\Form;
 use StORM\Entity;
 
 /**
@@ -75,6 +76,51 @@ abstract class ResourceDefinition
 		unset($entity);
 
 		return null;
+	}
+
+	/**
+	 * Záznam, který nejde upravit ani smazat (např. přišel importem): vrátí důvod, jinak null.
+	 * Stránka záznamu je pak jen ke čtení, v seznamu chybí koš a hromadné akce ho přeskočí.
+	 */
+	public function lockReason(Entity $entity): ?string
+	{
+		unset($entity);
+
+		return null;
+	}
+
+	/**
+	 * Výchozí hodnoty formuláře ze záznamu — pro pole, která nejsou sloupcem (typ, odvozené hodnoty).
+	 * @param array<string, mixed> $defaults
+	 * @return array<string, mixed>
+	 */
+	public function formDefaults(array $defaults, Entity $entity): array
+	{
+		unset($entity);
+
+		return $defaults;
+	}
+
+	/**
+	 * Vlastní kontrola formuláře (chyby přes $form['pole']->addError()). $entity = upravovaný záznam.
+	 */
+	public function validate(Form $form, ?Entity $entity): void
+	{
+		unset($form, $entity);
+	}
+
+	/**
+	 * Úprava dat těsně před uložením (pole, která nejsou sloupcem, odvozené sloupce). V datech jsou
+	 * i jména nahraných souborů. Co v datech zůstane a není sloupcem, se neuloží.
+	 * @param array<string, mixed> $data
+	 * @param array<string, mixed> $values všechny hodnoty formuláře
+	 * @return array<string, mixed>
+	 */
+	public function beforeSave(array $data, array $values, ?Entity $entity): array
+	{
+		unset($values, $entity);
+
+		return $data;
 	}
 
 	/**

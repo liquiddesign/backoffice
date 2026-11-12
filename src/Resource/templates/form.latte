@@ -3,18 +3,22 @@
 {varType string $fieldsTemplate}
 {varType bool $canDelete}
 {varType array $imageUrls}
+{varType array $fileInfo}
+{varType array $relationLabels}
+{varType string|null $lockReason}
 {block content}
 	<form n:name="form" class="bo-form" data-bo-form novalidate>
 		<div n:foreach="$form->getOwnErrors() as $error" class="bo-flash bo-flash-error" role="alert"><span>{$error}</span></div>
+		<div n:if="$lockReason" class="bo-notice bo-notice-warn" role="status">{Backoffice\Shell\Icons::get('alert', 18)}<span>{$lockReason}</span></div>
 
 		<section n:foreach="$sections as $sectionTitle => $fields" class="bo-card">
 			<div class="bo-card-head"><h2>{$sectionTitle}</h2></div>
 			<div class="bo-card-body">
-				{include $fieldsTemplate, form: $form, fields: $fields, mutations: $mutations, imageUrls: $imageUrls}
+				{include $fieldsTemplate, form: $form, fields: $fields, mutations: $mutations, imageUrls: $imageUrls, fileInfo: $fileInfo, relationLabels: $relationLabels}
 			</div>
 		</section>
 
-		<div class="bo-savebar" data-bo-savebar>
+		<div n:if="!$lockReason" class="bo-savebar" data-bo-savebar>
 			<button n:if="$entity && $canDelete" type="submit" form="bo-delete-form" class="bo-btn bo-btn-ghost bo-btn-danger-text">Smazat</button>
 			<span class="bo-savebar-state" data-bo-dirty-label>Všechny změny jsou uložené</span>
 			<span class="bo-spacer"></span>

@@ -79,6 +79,24 @@ final class FormBuilder
 	}
 
 	/**
+	 * Vazba na záznam jiné tabulky: pole s hledáním (napíšete část názvu, vyberete ze seznamu).
+	 * Popisek a hledané sloupce přes ->relationLabel(). Hodnota = primární klíč vybraného záznamu.
+	 * @param \StORM\Repository<covariant \StORM\Entity> $repository
+	 */
+	public function relation(string $name, string $label, \StORM\Repository $repository): Field
+	{
+		return $this->add(Field::TYPE_RELATION, $name, $label)->setRelationRepository($repository);
+	}
+
+	/**
+	 * Soubor nahraný do userfiles (PDF…); adresář přes ->fileDirectory(). Ve sloupci je jméno souboru.
+	 */
+	public function file(string $name, string $label): Field
+	{
+		return $this->add(Field::TYPE_FILE, $name, $label);
+	}
+
+	/**
 	 * @return array<string, \Backoffice\Resource\Form\Field>
 	 */
 	public function getFields(): array

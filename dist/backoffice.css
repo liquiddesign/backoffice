@@ -602,3 +602,14 @@ button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
 	.bo-image { flex-direction: column; }
 	.bo-image-thumb { flex-basis: auto; width: 120px; }
 }
+.bo-file-current { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; margin-bottom: 6px; }
+.bo-file-drop { max-width: 640px; min-height: 64px; }
+.bo-field-wrap { display: contents; }
+.bo-field-wrap[hidden] { display: none; }
+.bo-lookup { position: relative; max-width: 640px; }
+.bo-lookup .bo-input { width: 100%; }
+.bo-lookup-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 2px); max-height: 280px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none; background: var(--adm-surface); border: 1px solid var(--adm-line); border-radius: var(--adm-radius-sm); box-shadow: 0 8px 24px rgba(30, 40, 55, .12); font-size: 13.5px; }
+.bo-lookup-list li { padding: 7px 12px; cursor: pointer; }
+.bo-lookup-list li[aria-selected="true"], .bo-lookup-list li:hover { background: var(--adm-primary-soft); color: var(--adm-primary); }
+.bo-lookup-list li.is-empty { color: var(--adm-muted); cursor: default; background: none; }
+.bo-lock { display: inline-flex; padding: 0 6px; }

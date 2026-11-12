@@ -29,6 +29,7 @@ final class Icons
 		'dot' => '<circle cx="12" cy="12" r="3"/>',
 		'alert' => '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>',
 		'edit' => '<path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/>',
+		'lock' => '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 		'trash' => '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
 		'grip' => '<path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/>',
 		'chevron-down' => '<path d="M6 9l6 6 6-6"/>',

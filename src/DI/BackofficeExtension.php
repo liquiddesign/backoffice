@@ -7,6 +7,7 @@ namespace Backoffice\DI;
 use Backoffice\Bridge\LegacyAdminAccessChecker;
 use Backoffice\Bridge\LegacyBridge;
 use Backoffice\Bridge\LegacyChangeLogger;
+use Backoffice\Media\FileStorage;
 use Backoffice\Media\ImageStorage;
 use Backoffice\Resource\Form\FormFactory;
 use Backoffice\Resource\ResourceDefinition;
@@ -124,6 +125,16 @@ final class BackofficeExtension extends CompilerExtension
 
 		$builder->addDefinition($this->prefix('imageStorage'))
 			->setFactory(ImageStorage::class, ['userDir' => $userDir, 'userUrl' => $config->userUrl]);
+
+		$tempDir = $builder->parameters['tempDir'] ?? null;
+
+		$builder->addDefinition($this->prefix('fileStorage'))
+			->setFactory(FileStorage::class, [
+				'userDir' => $userDir,
+				'userUrl' => $config->userUrl,
+				// Koš smazaných souborů (pro „Vrátit“) mimo web.
+				'trashDir' => (\is_string($tempDir) ? $tempDir : \sys_get_temp_dir()) . '/backoffice-trash',
+			]);
 
 		$builder->addDefinition($this->prefix('formFactory'))
 			->setFactory(FormFactory::class);

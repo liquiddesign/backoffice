@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Backoffice\UI;
 
+use Backoffice\Media\FileStorage;
 use Backoffice\Media\ImageStorage;
 use Backoffice\Resource\Form\Field;
 use Backoffice\Resource\Form\FormFactory;
@@ -17,6 +18,7 @@ use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\DI\Attributes\Inject;
 use Nette\Utils\Random;
+use Nette\Utils\Strings;
 use StORM\Entity;
 
 /**
@@ -24,6 +26,9 @@ use StORM\Entity;
  */
 final class ResourcePresenter extends BackofficePresenter
 {
+	/** Klíč v datech smazaného záznamu (operace „restore“) se soubory přesunutými do koše. */
+	public const UNDO_FILES = '__files';
+
 	/** Kolik posledních vratných změn si session pamatuje (tlačítko „Vrátit“). */
 	private const UNDO_LIMIT = 10;
 
@@ -41,6 +46,9 @@ final class ResourcePresenter extends BackofficePresenter
 
 	#[Inject]
 	public ImageStorage $images;
+
+	#[Inject]
+	public FileStorage $files;
 
 	private ?ResourceDefinition $definition = null;
 
@@ -96,7 +104,8 @@ final class ResourcePresenter extends BackofficePresenter
 			return;
 		}
 
-		$this['form']->setDefaults($this->formFactory->defaults($this->getDefinition()->buildForm(), $this->entity));
+		$definition = $this->getDefinition();
+		$this['form']->setDefaults($definition->formDefaults($this->formFactory->defaults($definition->buildForm(), $this->entity), $this->entity));
 	}
 
 	public function renderEdit(): void
@@ -133,6 +142,11 @@ final class ResourcePresenter extends BackofficePresenter
 
 		$entity = $meta->getRepository()->one($id);
 
+		if ($entity !== null && $this->getDefinition()->lockReason($entity) !== null) {
+			$this->flashMessage((string) $this->getDefinition()->lockReason($entity), 'error');
+			$this->redirect('default', $this->listParameters());
+		}
+
 		if ($entity !== null && !$force && ($this->getDefinition()->usages($entity) ?? []) !== []) {
 			// Používá se na stránkách — rozhodne se na stránce se seznamem míst.
 			$this->redirect('usage', ['id' => $id]);
@@ -153,6 +167,7 @@ final class ResourcePresenter extends BackofficePresenter
 				$this->redirect('default', $this->listParameters());
 			}
 
+			$data[self::UNDO_FILES] = $this->trashFiles($entity);
 			$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_DELETE, $id);
 			$this->getDefinition()->changed();
 			$this->flashWithUndo("Smazáno: $title", [['restore', $id, $data]]);
@@ -216,6 +231,80 @@ final class ResourcePresenter extends BackofficePresenter
 	}
 
 	/**
+	 * Soubory smazaného záznamu do koše (FileStorage::trash()), ať je „Vrátit“ může vrátit.
+	 * @return list<array{string, string, string}> [klíč v koši, adresář, jméno]
+	 */
+	public function trashFiles(Entity $entity): array
+	{
+		$trashed = [];
+
+		foreach ($this->getDefinition()->buildForm()->getFields() as $field) {
+			$directory = $field->getFileDirectory();
+
+			if ($field->type !== Field::TYPE_FILE || $directory === null) {
+				continue;
+			}
+
+			$filename = $entity->getValue($field->name);
+
+			if (!\is_string($filename) || $filename === '') {
+				continue;
+			}
+
+			$key = $this->files->trash($directory, $filename);
+
+			if ($key === null) {
+				continue;
+			}
+
+			$trashed[] = [$key, $directory, $filename];
+		}
+
+		return $trashed;
+	}
+
+	/**
+	 * Adresa souboru ke stažení z userfiles, nebo null, když soubor není.
+	 */
+	public function fileUrl(?string $directory, mixed $filename): ?string
+	{
+		return $directory !== null && \is_string($filename) && $filename !== '' ? $this->files->url($directory, $filename) : null;
+	}
+
+	/**
+	 * Hledání pro pole vazby (FormBuilder::relation()): JSON [{id, label}], nejvýš 20 položek.
+	 */
+	public function handleLookup(string $field, string $q = ''): void
+	{
+		if (!$this->isAllowedAction('edit') && !$this->isAllowedAction('new')) {
+			$this->error('Nemáte oprávnění.', 403);
+		}
+
+		$definition = $this->getDefinition()->buildForm()->getFields()[$field] ?? null;
+		$repository = $definition?->getRelationRepository();
+
+		if ($definition === null || $repository === null) {
+			$this->error('Pole vazby neexistuje.');
+		}
+
+		$collection = $repository->many()->select(['bo_label' => $definition->getRelationLabel()]);
+		$q = Strings::trim($q);
+
+		if ($q !== '') {
+			$conditions = \array_map(static fn (string $column): string => "$column LIKE :bo_q", $definition->getRelationSearch());
+			$collection->where('(' . \implode(' OR ', $conditions) . ')', ['bo_q' => '%' . \addcslashes($q, '%_\\') . '%']);
+		}
+
+		$items = [];
+
+		foreach ($collection->setOrderBy(['bo_label' => 'ASC'])->setTake(20)->toArrayOf('bo_label') as $id => $label) {
+			$items[] = ['id' => (string) $id, 'label' => (string) $label];
+		}
+
+		$this->sendJson($items);
+	}
+
+	/**
 	 * Adresa náhledu obrázku z userfiles, nebo null, když soubor není.
 	 */
 	public function imageUrl(?string $directory, mixed $filename): ?string
@@ -252,7 +341,19 @@ final class ResourcePresenter extends BackofficePresenter
 					continue;
 				}
 
+				$files = \is_array($data[self::UNDO_FILES] ?? null) ? $data[self::UNDO_FILES] : [];
+				unset($data[self::UNDO_FILES]);
 				$repository->createOne($data);
+
+				foreach ($files as $file) {
+					if (!\is_array($file) || \count($file) !== 3) {
+						continue;
+					}
+
+					[$key, $directory, $filename] = $file;
+					$this->files->restore((string) $key, (string) $directory, (string) $filename);
+				}
+
 				$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_NEW, $id);
 				$restored++;
 
@@ -375,6 +476,7 @@ final class ResourcePresenter extends BackofficePresenter
 		$form->onValidate[] = function (Form $form) use ($definition): void {
 			$this->validateUnique($form, $definition);
 			$this->validateImages($form, $definition);
+			$definition->validate($form, $this->entity);
 		};
 
 		$form->onSuccess[] = function (Form $form, array $values) use ($definition): void {
@@ -384,8 +486,14 @@ final class ResourcePresenter extends BackofficePresenter
 				$this->error('Na uložení nemáte oprávnění.', 403);
 			}
 
+			if ($this->entity !== null && $definition->lockReason($this->entity) !== null) {
+				$this->error('Záznam nejde upravit.', 403);
+			}
+
 			$repository = $meta->getRepository();
 			$data = $this->formFactory->values($definition->buildForm(), $values, $repository->getStructure());
+			[$data, $obsoleteFiles] = $this->prepareFiles($form, $definition, $data);
+			$data = $definition->beforeSave($data, $values, $this->entity);
 
 			if ($this->entity !== null) {
 				$this->entity->update($data);
@@ -393,12 +501,17 @@ final class ResourcePresenter extends BackofficePresenter
 				$type = ChangeLogger::TYPE_DETAIL;
 			} else {
 				// Znovu načíst: nová entita z createOne() nemá jazykové sloupce v podobě pro getValue().
-				$created = $repository->createOne($data);
+				$created = $repository->createOne($data, true);
 				$entity = $repository->one($created->getPK()) ?? $created;
 				$type = ChangeLogger::TYPE_NEW;
 			}
 
 			$this->saveImages($form, $definition, $entity);
+
+			foreach ($obsoleteFiles as [$directory, $filename]) {
+				$this->files->delete($directory, $filename);
+			}
+
 			$this->changeLogger->log($meta->getTitle(), $type, (string) $entity->getPK());
 			$definition->changed();
 
@@ -452,6 +565,23 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->template->fieldsTemplate = Field::TEMPLATE;
 		$this->template->canDelete = $this->canDelete();
 		$this->template->imageUrls = $this->imageUrls();
+		$this->template->fileInfo = $this->fileInfo();
+		$this->template->relationLabels = $this->relationLabels();
+		$lock = $this->entity !== null ? $this->getDefinition()->lockReason($this->entity) : null;
+		$this->template->lockReason = $lock;
+
+		if ($lock !== null) {
+			$this->template->canDelete = false;
+
+			foreach ($this['form']->getControls() as $control) {
+				if (!$control instanceof \Nette\Forms\Controls\BaseControl) {
+					continue;
+				}
+
+				$control->setDisabled();
+			}
+		}
+
 		$this->template->setFile(__DIR__ . '/../Resource/templates/form.latte');
 	}
 
@@ -461,7 +591,7 @@ final class ResourcePresenter extends BackofficePresenter
 	private function validateImages(Form $form, ResourceDefinition $definition): void
 	{
 		foreach ($definition->buildForm()->getFields() as $field) {
-			if ($field->type !== Field::TYPE_IMAGE || !$field->isRequired()) {
+			if (!FormFactory::isUpload($field) || !$field->isRequired()) {
 				continue;
 			}
 
@@ -475,7 +605,7 @@ final class ResourcePresenter extends BackofficePresenter
 				continue;
 			}
 
-			$control->addError('Nahrajte obrázek ' . $field->label . '.');
+			$control->addError(($field->type === Field::TYPE_IMAGE ? 'Nahrajte obrázek ' : 'Nahrajte soubor ') . $field->label . '.');
 		}
 	}
 
@@ -513,6 +643,65 @@ final class ResourcePresenter extends BackofficePresenter
 	}
 
 	/**
+	 * Popisky vybraných položek vazeb: jméno pole → popisek (pole s hledáním ukazuje popisek, ne klíč).
+	 * @return array<string, string>
+	 */
+	private function relationLabels(): array
+	{
+		$labels = [];
+		$form = $this['form'];
+
+		foreach ($this->getDefinition()->buildForm()->getFields() as $field) {
+			$repository = $field->getRelationRepository();
+
+			if ($repository === null) {
+				continue;
+			}
+
+			$control = $form->getComponent($field->name);
+			$value = $control instanceof \Nette\Forms\Controls\BaseControl ? $control->getValue() : null;
+
+			if (!\is_scalar($value) || (string) $value === '') {
+				continue;
+			}
+
+			$pk = 'this.' . $repository->getStructure()->getPK()->getName();
+			$found = $repository->many()->where($pk, (string) $value)->select(['bo_label' => $field->getRelationLabel()])->toArrayOf('bo_label');
+			$label = \reset($found);
+			$labels[$field->name] = \is_scalar($label) ? (string) $label : (string) $value;
+		}
+
+		return $labels;
+	}
+
+	/**
+	 * Soubory záznamu pro formulář: jméno pole → [jméno souboru, adresa nebo null, velikost nebo null].
+	 * @return array<string, array{string, string|null, int|null}>
+	 */
+	private function fileInfo(): array
+	{
+		$info = [];
+
+		foreach ($this->getDefinition()->buildForm()->getFields() as $field) {
+			$directory = $field->getFileDirectory();
+
+			if ($field->type !== Field::TYPE_FILE || $directory === null || $this->entity === null) {
+				continue;
+			}
+
+			$filename = $this->entity->getValue($field->name);
+
+			if (!\is_string($filename) || $filename === '' || !FileStorage::isSafeFilename($filename)) {
+				continue;
+			}
+
+			$info[$field->name] = [$filename, $this->files->url($directory, $filename), $this->files->size($directory, $filename)];
+		}
+
+		return $info;
+	}
+
+	/**
 	 * Náhledy obrázků záznamu pro formulář: jméno pole → adresa (z prvního adresáře pole).
 	 * @return array<string, string>
 	 */
@@ -522,7 +711,12 @@ final class ResourcePresenter extends BackofficePresenter
 
 		foreach ($this->getDefinition()->buildForm()->getFields() as $field) {
 			$directory = \array_key_first($field->getImageDirectories());
-			$url = $this->entity !== null ? $this->imageUrl($directory, $this->entity->getValue($field->name)) : null;
+
+			if ($field->type !== Field::TYPE_IMAGE || $directory === null || $this->entity === null) {
+				continue;
+			}
+
+			$url = $this->imageUrl($directory, $this->entity->getValue($field->name));
 
 			if ($url === null) {
 				continue;
@@ -532,6 +726,54 @@ final class ResourcePresenter extends BackofficePresenter
 		}
 
 		return $urls;
+	}
+
+	/**
+	 * Nahrané soubory do userfiles a jejich jména (velikost, přípona) do dat záznamu. Vrátí data
+	 * a soubory, které po uložení přestanou patřit záznamu (smažou se, až se záznam uloží).
+	 * @param array<string, mixed> $data
+	 * @return array{array<string, mixed>, list<array{string, string}>}
+	 */
+	private function prepareFiles(Form $form, ResourceDefinition $definition, array $data): array
+	{
+		$obsolete = [];
+
+		foreach ($definition->buildForm()->getFields() as $field) {
+			$directory = $field->getFileDirectory();
+
+			if ($field->type !== Field::TYPE_FILE || $directory === null) {
+				continue;
+			}
+
+			$control = $form->getComponent($field->name);
+			\assert($control instanceof \Nette\Forms\Controls\UploadControl);
+			$upload = $control->getValue();
+			$current = $this->entity?->getValue($field->name);
+			$current = \is_string($current) && $current !== '' ? $current : null;
+			$remove = (bool) $form->getComponent($field->name . FormFactory::REMOVE_SUFFIX)->getValue();
+
+			if ($upload instanceof \Nette\Http\FileUpload && $upload->isOk()) {
+				$filename = $this->files->save($upload, $directory, $current);
+				$data[$field->name] = $filename;
+
+				if ($field->getSizeColumn() !== null) {
+					$data[$field->getSizeColumn()] = $upload->getSize();
+				}
+
+				if ($field->getExtensionColumn() !== null) {
+					$data[$field->getExtensionColumn()] = Strings::lower((string) \pathinfo($filename, \PATHINFO_EXTENSION));
+				}
+
+				if ($current !== null && $current !== $filename) {
+					$obsolete[] = [$directory, $current];
+				}
+			} elseif ($remove && $current !== null && !$field->isRequired()) {
+				$data[$field->name] = null;
+				$obsolete[] = [$directory, $current];
+			}
+		}
+
+		return [$data, $obsolete];
 	}
 
 	private function hasListView(): bool

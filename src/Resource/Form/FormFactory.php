@@ -45,6 +45,12 @@ final class FormFactory
 				continue;
 			}
 
+			if ($field->type === Field::TYPE_FILE) {
+				$this->addFile($form, $field);
+
+				continue;
+			}
+
 			$control = $this->createControl($form, $field);
 
 			if ($field->getDefault() !== null) {
@@ -74,7 +80,7 @@ final class FormFactory
 		$defaults = [];
 
 		foreach ($builder->getFields() as $name => $field) {
-			if ($field->type === Field::TYPE_IMAGE) {
+			if (self::isUpload($field)) {
 				continue;
 			}
 
@@ -106,7 +112,7 @@ final class FormFactory
 
 		foreach ($builder->getFields() as $name => $field) {
 			// Obrázky ukládá presenter až po uložení záznamu (jméno souboru = ID záznamu).
-			if (!\array_key_exists($name, $values) || $field->type === Field::TYPE_IMAGE) {
+			if (!\array_key_exists($name, $values) || self::isUpload($field)) {
 				continue;
 			}
 
@@ -129,6 +135,14 @@ final class FormFactory
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Obrázek nebo soubor — ukládá je presenter zvlášť, do hodnot formuláře nepatří.
+	 */
+	public static function isUpload(Field $field): bool
+	{
+		return $field->type === Field::TYPE_IMAGE || $field->type === Field::TYPE_FILE;
 	}
 
 	/**
@@ -160,6 +174,19 @@ final class FormFactory
 		$form->addCheckbox($field->name . self::REMOVE_SUFFIX, 'Odstranit obrázek');
 	}
 
+	private function addFile(Form $form, Field $field): void
+	{
+		$upload = $form->addUpload($field->name, $field->label);
+
+		if ($field->getAcceptTypes() !== []) {
+			$upload->setHtmlAttribute('accept', \implode(',', $field->getAcceptTypes()));
+			$upload->addCondition(Form::Filled)
+				->addRule(Form::MimeType, $field->getAcceptMessage() ?? 'Nepovolený typ souboru.', $field->getAcceptTypes());
+		}
+
+		$form->addCheckbox($field->name . self::REMOVE_SUFFIX, 'Odstranit soubor');
+	}
+
 	private function createControl(Form $form, Field $field): BaseControl
 	{
 		return match ($field->type) {
@@ -168,6 +195,7 @@ final class FormFactory
 			Field::TYPE_CHECKBOX => $form->addCheckbox($field->name, $field->label),
 			Field::TYPE_SELECT => $this->createSelect($form, $field),
 			Field::TYPE_DATE => $this->createDate($form, $field),
+			Field::TYPE_RELATION => $this->createRelation($form, $field),
 			default => $form->addText($field->name, $field->label),
 		};
 	}
@@ -176,11 +204,21 @@ final class FormFactory
 	{
 		$select = $form->addSelect($field->name, $field->label, $field->getItems());
 
-		if (!$field->isRequired()) {
-			$select->setPrompt('—');
+		if ($field->getPrompt() !== null || !$field->isRequired()) {
+			$select->setPrompt($field->getPrompt() ?? '—');
 		}
 
 		return $select;
+	}
+
+	private function createRelation(Form $form, Field $field): BaseControl
+	{
+		$repository = $field->getRelationRepository() ?? throw new \LogicException("Vazba '{$field->name}' nemá repozitář.");
+		$input = $form->addText($field->name, $field->label)->setNullable();
+		$input->addCondition(Form::Filled)
+			->addRule(static fn ($control): bool => $repository->one((string) $control->getValue()) !== null, 'Vyberte položku ze seznamu.');
+
+		return $input;
 	}
 
 	private function createDate(Form $form, Field $field): BaseControl

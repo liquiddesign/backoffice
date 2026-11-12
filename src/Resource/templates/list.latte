@@ -18,6 +18,7 @@
 {varType bool $canReorder}
 {varType string $pkName}
 {varType array $usages}
+{varType array $locked}
 {var $C = Backoffice\Resource\List\Column::class}
 {var $I = Backoffice\Shell\Icons::class}
 {var $columnCount = count($list->getColumns()) + 1 + ($selection ? 1 : 0) + ($canReorder ? 1 : 0)}
@@ -98,6 +99,10 @@
 								{var $src = $presenter->imageUrl($column->getDirectory(), $row->getValue($column->name))}
 								<img n:if="$src" src="{$src}" alt="" class="bo-cell-image" loading="lazy">
 								<span n:if="!$src" class="bo-cell-image bo-cell-image-empty" aria-label="bez obrázku"></span>
+							{elseif $column->type === $C::TYPE_FILE}
+								{var $filename = $row->getValue($column->name)}
+								{var $href = $presenter->fileUrl($column->getDirectory(), $filename)}
+								{if $href}<a href="{$href}" target="_blank" rel="noopener" class="bo-nowrap">{$I::get('file', 14)} {$filename}</a>{elseif $filename}<span class="bo-muted" title="Soubor na disku chybí">{$filename}</span>{else}<span class="bo-muted">—</span>{/if}
 							{elseif $column->type === $C::TYPE_USAGE}
 								{var $count = $usages[$pk] ?? null}
 								{if $count}
@@ -138,8 +143,9 @@
 						<td class="bo-td-actions">
 							<div class="bo-row-actions">
 								<a n:if="$hasDetail" class="bo-btn bo-btn-ghost bo-btn-icon" href="{plink edit id => $pk}" aria-label="Upravit" title="Upravit">{$I::get('edit', 16)}</a>
-								<a n:if="$canDelete && ($usages[$pk] ?? 0) > 0" class="bo-btn bo-btn-ghost bo-btn-icon bo-btn-danger-text" href="{plink usage id => $pk}" aria-label="Smazat (používá se na stránkách)" title="Smazat — používá se na stránkách">{$I::get('trash', 16)}</a>
-								<button n:if="$canDelete && !($usages[$pk] ?? 0)" type="submit" name="action" value="delete-row:{$pk}" class="bo-btn bo-btn-ghost bo-btn-icon bo-btn-danger-text" aria-label="Smazat" title="Smazat" data-bo-confirm="Smazat záznam?">{$I::get('trash', 16)}</button>
+								<span n:if="$locked[$pk] ?? null" class="bo-muted bo-lock" title="{$locked[$pk]}" aria-label="{$locked[$pk]}">{$I::get('lock', 15)}</span>
+								<a n:if="$canDelete && !($locked[$pk] ?? null) && ($usages[$pk] ?? 0) > 0" class="bo-btn bo-btn-ghost bo-btn-icon bo-btn-danger-text" href="{plink usage id => $pk}" aria-label="Smazat (používá se na stránkách)" title="Smazat — používá se na stránkách">{$I::get('trash', 16)}</a>
+								<button n:if="$canDelete && !($locked[$pk] ?? null) && !($usages[$pk] ?? 0)" type="submit" name="action" value="delete-row:{$pk}" class="bo-btn bo-btn-ghost bo-btn-icon bo-btn-danger-text" aria-label="Smazat" title="Smazat" data-bo-confirm="Smazat záznam?">{$I::get('trash', 16)}</button>
 							</div>
 						</td>
 					</tr>

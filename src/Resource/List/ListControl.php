@@ -64,15 +64,18 @@ final class ListControl extends Control
 		\assert($template instanceof Template);
 		$rows = $collection->toArray();
 		$usages = [];
+		$locked = [];
 
 		foreach ($rows as $row) {
 			$locations = $presenter->getDefinition()->usages($row);
 			$usages[(string) $row->getPK()] = $locations === null ? null : \count($locations);
+			$locked[(string) $row->getPK()] = $presenter->getDefinition()->lockReason($row);
 		}
 
 		$template->list = $list;
 		$template->rows = $rows;
 		$template->usages = $usages;
+		$template->locked = $locked;
 		$template->pager = $pager;
 		$template->sortKey = $sortKey;
 		$template->direction = $direction;
@@ -175,6 +178,10 @@ final class ListControl extends Control
 		$changes = [];
 
 		foreach ($entities as $pk => $entity) {
+			if ($presenter->getDefinition()->lockReason($entity) !== null) {
+				continue;
+			}
+
 			$values = \is_array($posted[$pk] ?? null) ? $posted[$pk] : [];
 			/** @var array<string, mixed> $new */
 			$new = [];
@@ -267,7 +274,7 @@ final class ListControl extends Control
 		foreach ($this->loadEntities($ids) as $pk => $entity) {
 			$locations = $presenter->getDefinition()->usages($entity);
 
-			if ($locations !== null && $locations !== []) {
+			if (($locations !== null && $locations !== []) || $presenter->getDefinition()->lockReason($entity) !== null) {
 				$skipped[] = $presenter->entityTitle($entity);
 
 				continue;
@@ -283,6 +290,7 @@ final class ListControl extends Control
 				continue;
 			}
 
+			$data[ResourcePresenter::UNDO_FILES] = $presenter->trashFiles($entity);
 			$presenter->logChange(ChangeLogger::TYPE_DELETE, (string) $pk);
 			$undo[] = ['restore', (string) $pk, $data];
 		}
@@ -293,7 +301,7 @@ final class ListControl extends Control
 		}
 
 		if ($skipped !== []) {
-			$presenter->flashMessage('Nesmazáno, používá se na stránkách: ' . \implode(', ', $skipped) . '. Kde přesně, ukáže koš u řádku.', 'warning');
+			$presenter->flashMessage('Nesmazáno (používá se na stránkách, nebo nejde měnit): ' . \implode(', ', $skipped) . '.', 'warning');
 		}
 
 		if ($failed > 0) {
@@ -317,6 +325,10 @@ final class ListControl extends Control
 		$undo = [];
 
 		foreach ($this->loadEntities($ids) as $pk => $entity) {
+			if ($presenter->getDefinition()->lockReason($entity) !== null) {
+				continue;
+			}
+
 			$current = $entity->getValue($action->column);
 
 			$same = \is_bool($action->value)

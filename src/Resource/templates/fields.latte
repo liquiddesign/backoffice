@@ -3,6 +3,8 @@
 {varType array $fields}
 {varType array $mutations}
 {foreach $fields as $field}
+	{var $whenField = $field->getVisibleWhenField()}
+	<div class="bo-field-wrap" n:attr="data-bo-when: $whenField !== null ? $form[$whenField]->getHtmlName(), data-bo-when-values: $whenField !== null ? json_encode($field->getVisibleWhenValues())">
 	{if $field->isLocalized()}
 		<fieldset class="bo-field bo-field-locale">
 			<legend>{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</legend>
@@ -43,6 +45,34 @@
 			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
 			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
 		</div>
+	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_RELATION}
+		<div class="bo-field">
+			<label for="{$form[$field->name]->getHtmlId()}-search">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
+			<div class="bo-lookup" data-bo-lookup="{plink lookup! field => $field->name}">
+				<input n:name="$field->name" type="hidden" data-bo-lookup-value>
+				<input type="text" id="{$form[$field->name]->getHtmlId()}-search" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid" value="{($relationLabels ?? [])[$field->name] ?? ''}" placeholder="Začněte psát a vyberte ze seznamu" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{$form[$field->name]->getHtmlId()}-list" data-bo-lookup-input n:attr="disabled: $form[$field->name]->isDisabled()">
+				<ul class="bo-lookup-list" id="{$form[$field->name]->getHtmlId()}-list" role="listbox" hidden data-bo-lookup-list></ul>
+			</div>
+			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
+			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+		</div>
+	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_FILE}
+		{var $file = ($fileInfo ?? [])[$field->name] ?? null}
+		<div class="bo-field">
+			<label n:name="$field->name">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
+			<div n:if="$file" class="bo-file-current">
+				{Backoffice\Shell\Icons::get('file', 16)}
+				{if $file[1]}<a href="{$file[1]}" target="_blank" rel="noopener">{$file[0]}</a>{else}<span>{$file[0]}</span> <span class="bo-field-warn">soubor na disku chybí</span>{/if}
+				<span n:if="$file[2] !== null" class="bo-muted">{$file[2]|bytes}</span>
+			</div>
+			<div n:class="bo-image-drop, bo-file-drop, $form[$field->name]->hasErrors() ? is-invalid" data-bo-file>
+				<input n:name="$field->name" class="bo-image-input">
+				<span class="bo-image-text" data-bo-image-text>{if $file}Přetáhněte nový soubor, nebo <u>vyberte</u> — nahradí současný{else}Přetáhněte soubor, nebo <u>vyberte</u>{/if}</span>
+			</div>
+			<label n:if="$file && !$field->isRequired()" class="bo-check bo-image-remove"><input n:name="$field->name . Backoffice\Resource\Form\FormFactory::REMOVE_SUFFIX"> Odstranit soubor (smaže se po uložení)</label>
+			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
+			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+		</div>
 	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_CHECKBOX}
 		<div class="bo-field">
 			<label class="bo-check"><input n:name="$field->name"> {$field->label}</label>
@@ -63,4 +93,5 @@
 			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
 		</div>
 	{/if}
+	</div>
 {/foreach}

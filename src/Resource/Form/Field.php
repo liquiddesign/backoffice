@@ -23,6 +23,8 @@ final class Field
 	public const TYPE_LOCALE_TEXT = 'localeText';
 	public const TYPE_LOCALE_TEXTAREA = 'localeTextarea';
 	public const TYPE_IMAGE = 'image';
+	public const TYPE_FILE = 'file';
+	public const TYPE_RELATION = 'relation';
 
 	private bool $required = false;
 
@@ -34,6 +36,32 @@ final class Field
 	private ?string $uniqueMessage = null;
 
 	private mixed $default = null;
+
+	private ?string $fileDirectory = null;
+
+	private ?string $prompt = null;
+
+	private ?string $visibleWhenField = null;
+
+	/** @var list<string> */
+	private array $visibleWhenValues = [];
+
+	/** @var \StORM\Repository<covariant \StORM\Entity>|null */
+	private ?\StORM\Repository $relationRepository = null;
+
+	private ?string $relationLabel = null;
+
+	/** @var list<string> */
+	private array $relationSearch = [];
+
+	/** @var list<string> */
+	private array $acceptTypes = [];
+
+	private ?string $acceptMessage = null;
+
+	private ?string $sizeColumn = null;
+
+	private ?string $extensionColumn = null;
 
 	/** @var array<string, (\Closure(\Nette\Utils\Image): void)|null> adresář v userfiles → úprava obrázku */
 	private array $imageDirectories = [];
@@ -125,6 +153,160 @@ final class Field
 	public function getImageDirectories(): array
 	{
 		return $this->imageDirectories;
+	}
+
+	/**
+	 * Soubor: adresář v userfiles, kam se uloží (jméno = očištěné jméno nahraného souboru).
+	 */
+	public function fileDirectory(string $directory): self
+	{
+		if ($this->type !== self::TYPE_FILE) {
+			throw new \LogicException("Pole '{$this->name}' není soubor.");
+		}
+
+		if (!\preg_match('~^[a-z0-9_-]+(/[a-z0-9_-]+)*$~i', $directory)) {
+			throw new \InvalidArgumentException("Neplatný adresář souboru '$directory'.");
+		}
+
+		$this->fileDirectory = $directory;
+
+		return $this;
+	}
+
+	public function getFileDirectory(): ?string
+	{
+		return $this->fileDirectory;
+	}
+
+	/**
+	 * Povolené typy souboru (MIME), např. ['application/pdf'].
+	 * @param list<string> $mimeTypes
+	 */
+	public function accept(array $mimeTypes, string $message): self
+	{
+		$this->acceptTypes = $mimeTypes;
+		$this->acceptMessage = $message;
+
+		return $this;
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public function getAcceptTypes(): array
+	{
+		return $this->acceptTypes;
+	}
+
+	public function getAcceptMessage(): ?string
+	{
+		return $this->acceptMessage;
+	}
+
+	/**
+	 * Sloupce, kam se při nahrání zapíše velikost (bajty) a přípona souboru.
+	 */
+	public function fileColumns(?string $size = null, ?string $extension = null): self
+	{
+		$this->sizeColumn = $size;
+		$this->extensionColumn = $extension;
+
+		return $this;
+	}
+
+	public function getSizeColumn(): ?string
+	{
+		return $this->sizeColumn;
+	}
+
+	public function getExtensionColumn(): ?string
+	{
+		return $this->extensionColumn;
+	}
+
+	/**
+	 * Text prázdné volby výběru (např. „pro všechny jazyky“). Bez něj nepovinný výběr ukáže „—“.
+	 */
+	public function prompt(string $prompt): self
+	{
+		$this->prompt = $prompt;
+
+		return $this;
+	}
+
+	public function getPrompt(): ?string
+	{
+		return $this->prompt;
+	}
+
+	/**
+	 * Pole je vidět, jen když má jiné pole (výběr) jednu z hodnot. Skryté pole se odešle taky —
+	 * co s ním, rozhodne ResourceDefinition::beforeSave() a validate().
+	 * @param string|list<string> $values
+	 */
+	public function visibleWhen(string $field, string|array $values): self
+	{
+		$this->visibleWhenField = $field;
+		$this->visibleWhenValues = \is_array($values) ? \array_values($values) : [$values];
+
+		return $this;
+	}
+
+	public function getVisibleWhenField(): ?string
+	{
+		return $this->visibleWhenField;
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public function getVisibleWhenValues(): array
+	{
+		return $this->visibleWhenValues;
+	}
+
+	/**
+	 * Vazba: popisek položky ve výběru (SQL výraz, např. "CONCAT(this.name, ' – ', this.isin)")
+	 * a sloupce, ve kterých se hledá.
+	 * @param list<string> $search
+	 */
+	public function relationLabel(string $expression, array $search): self
+	{
+		$this->relationLabel = $expression;
+		$this->relationSearch = $search;
+
+		return $this;
+	}
+
+	/**
+	 * @param \StORM\Repository<covariant \StORM\Entity> $repository
+	 */
+	public function setRelationRepository(\StORM\Repository $repository): self
+	{
+		$this->relationRepository = $repository;
+
+		return $this;
+	}
+
+	/**
+	 * @return \StORM\Repository<covariant \StORM\Entity>|null
+	 */
+	public function getRelationRepository(): ?\StORM\Repository
+	{
+		return $this->relationRepository;
+	}
+
+	public function getRelationLabel(): string
+	{
+		return $this->relationLabel ?? 'this.' . ($this->relationRepository?->getStructure()->getPK()->getName() ?? 'uuid');
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public function getRelationSearch(): array
+	{
+		return $this->relationSearch !== [] ? $this->relationSearch : [$this->getRelationLabel()];
 	}
 
 	public function getUniqueMessage(): ?string

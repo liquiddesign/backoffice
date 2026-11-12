@@ -21,6 +21,7 @@ class Column
 	public const TYPE_MUTATIONS = 'mutations';
 	public const TYPE_IMAGE = 'image';
 	public const TYPE_USAGE = 'usage';
+	public const TYPE_FILE = 'file';
 
 	/** Typy, které jde upravit přímo v řádku (->editable()). */
 	public const EDITABLE_TYPES = [self::TYPE_TEXT, self::TYPE_INTEGER, self::TYPE_CHECKBOX, self::TYPE_PRIORITY];

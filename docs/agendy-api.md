@@ -86,6 +86,7 @@ Tabulka podle návrhu „Seznam“: filtr nahoře, tabulka, lišta dole (výběr
 | `status(name, label, [hodnota => [štítek, varianta]])` | štítek stavu (ok, info, warn, danger, brand, mute) |
 | `priority(name = 'priority')` | pořadí: číslo v řádku + přetahování za úchyt, výchozí řazení |
 | `image(name, label, directory)` | náhled obrázku z `userfiles/<directory>` (40 × 40) |
+| `file(name, label, directory)` | jméno souboru jako odkaz ke stažení |
 | `usage(label = 'Použito')` | počet míst, kde se záznam používá (`ResourceDefinition::usages()`), odkaz na jejich seznam |
 | `mutations(label = 'Jazyky', column = null)` | štítky jazyků: vyplněné jazykové sloupce, nebo podle booleovského sloupce (`active`) |
 | `search(placeholder)` | text v poli „Hledat“; hledá se ve sloupcích s `->searchable()` |
@@ -167,6 +168,43 @@ decorator:
 		setup:
 			- '$onSave[]' = [App\WebpConverter, convert]
 ```
+
+
+### Soubor
+
+```php
+$form->file('storageName', 'PDF dokument')
+	->fileDirectory('annual_reports')
+	->accept(['application/pdf'], 'Povolené jsou jen soubory PDF.')
+	->fileColumns(size: 'fileSize', extension: 'fileExtension')
+	->required();
+```
+
+- Uloží se do `userfiles/<adresář>` pod očištěným jménem nahraného souboru
+  (`FileUpload::getSanitizedName()`, jako starý admin). Patří-li jméno jinému záznamu, dostane
+  `-2`, `-3`… (starý admin cizí soubor přepsal).
+- Ve sloupci pole je jméno souboru; `fileColumns()` doplní velikost a příponu.
+- Povinný soubor stačí mít u záznamu z dřívějška. Nový soubor nahradí starý (ten se po uložení smaže).
+- Při smazání záznamu se soubor přesune do koše mimo web (`%tempDir%/backoffice-trash`), „Vrátit“ ho
+  vrátí; koš se čistí po dni.
+
+### Výběr, viditelnost, vazba
+
+- `select(...)->prompt('na obou webech')` — text prázdné volby.
+- `->visibleWhen('type', 'pdf')` — pole je vidět jen při dané hodnotě jiného pole (skryté se odešle
+  taky; co s ním, řeší `beforeSave()`/`validate()`).
+- `relation('isin', 'Instrument', $repo)->relationLabel("CONCAT(this.name, ' – ', this.isin)", ['this.name', 'this.isin'])`
+  — pole s hledáním: píše se část názvu, nabídne 20 položek (signál `lookup!`, JSON), uloží se klíč.
+  Neexistující klíč = chyba u pole.
+
+### Háčky agendy
+
+| Metoda | K čemu |
+|---|---|
+| `formDefaults(defaults, entity)` | výchozí hodnoty polí, která nejsou sloupcem (typ odvozený z dat) |
+| `validate(form, entity)` | vlastní kontrola (chyby přes `$form['pole']->addError()`) |
+| `beforeSave(data, values, entity)` | úprava dat před uložením (pole mimo sloupce, odvozené sloupce) |
+| `lockReason(entity)` | záznam jen ke čtení (z importu): důvod se ukáže nahoře, formulář je zamčený, nejde smazat, hromadné akce ho přeskočí |
 
 ## Vlastní obrazovka seznamu (`ListView`)
 

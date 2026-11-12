@@ -92,6 +92,14 @@ final class ListBuilder
 	}
 
 	/**
+	 * Jméno souboru z userfiles/<directory> jako odkaz ke stažení.
+	 */
+	public function file(string $name, string $label, string $directory): Column
+	{
+		return $this->add((new Column(Column::TYPE_FILE, $name, $label))->directory($directory));
+	}
+
+	/**
 	 * Počet míst, kde se záznam používá (ResourceDefinition::usages()); odkaz na jejich seznam.
 	 */
 	public function usage(string $label = 'Použito'): Column
