@@ -11,6 +11,9 @@ use Nette\Utils\Arrays;
  */
 final class Field
 {
+	/** Šablona s poli formuláře, sdílí ji stránka záznamu i vlastní obrazovky (ListView). */
+	public const TEMPLATE = __DIR__ . '/../templates/fields.latte';
+
 	public const TYPE_TEXT = 'text';
 	public const TYPE_TEXTAREA = 'textarea';
 	public const TYPE_INTEGER = 'integer';
@@ -26,6 +29,8 @@ final class Field
 
 	/** @var array<string|int, string> */
 	private array $items = [];
+
+	private ?string $uniqueMessage = null;
 
 	public function __construct(
 		public readonly string $type,
@@ -60,6 +65,21 @@ final class Field
 		$this->items = $items;
 
 		return $this;
+	}
+
+	/**
+	 * Hodnota se v agendě nesmí opakovat (např. datum neobchodního dne). Hlídá se při uložení.
+	 */
+	public function unique(string $message = 'Záznam s touto hodnotou už existuje.'): self
+	{
+		$this->uniqueMessage = $message;
+
+		return $this;
+	}
+
+	public function getUniqueMessage(): ?string
+	{
+		return $this->uniqueMessage;
 	}
 
 	public function isRequired(): bool

@@ -71,6 +71,43 @@
 		}
 	}, true);
 
+	// Kalendář: klik na volný den zapíše datum do pole (data-bo-pick-target = id pole).
+	// Pole může mít data-bo-weekend-warning — text, který se ukáže u víkendového dne.
+	document.addEventListener('click', function (event) {
+		var day = event.target.closest('[data-bo-pick]');
+
+		if (!day) {
+			return;
+		}
+
+		var input = document.getElementById(day.dataset.boPickTarget);
+
+		if (!input) {
+			return;
+		}
+
+		input.value = day.dataset.boPick;
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		input.dispatchEvent(new Event('change', { bubbles: true }));
+
+		document.querySelectorAll('.bo-cal-day.is-picked').forEach(function (el) {
+			el.classList.remove('is-picked');
+		});
+		day.classList.add('is-picked');
+
+		var warn = document.getElementById(input.id + '-warn');
+
+		if (warn) {
+			warn.textContent = day.hasAttribute('data-bo-weekend') ? (input.dataset.boWeekendWarning || '') : '';
+		}
+
+		var next = input.form && Array.prototype.find.call(input.form.elements, function (el) {
+			return el !== input && el.matches('input:not([type=hidden]), textarea') && el.value === '';
+		});
+
+		(next || input).focus();
+	});
+
 	// Formulář agendy: neuložené změny, Ctrl S, varování při odchodu.
 	var form = document.querySelector('[data-bo-form]');
 
@@ -98,8 +135,11 @@
 
 		form.addEventListener('input', markDirty);
 		form.addEventListener('change', markDirty);
-		form.addEventListener('submit', function () {
-			submitting = true;
+		// Odeslání kteréhokoli formuláře na stránce (uložení i smazání z lišty) nemá varovat.
+		document.addEventListener('submit', function (event) {
+			if (!event.defaultPrevented) {
+				submitting = true;
+			}
 		});
 
 		window.addEventListener('beforeunload', function (event) {

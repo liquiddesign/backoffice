@@ -1,5 +1,7 @@
 {varType array $sections}
 {varType array $mutations}
+{varType string $fieldsTemplate}
+{varType bool $canDelete}
 {block content}
 	<form n:name="form" class="bo-form" data-bo-form novalidate>
 		<div n:foreach="$form->getOwnErrors() as $error" class="bo-flash bo-flash-error" role="alert"><span>{$error}</span></div>
@@ -7,51 +9,12 @@
 		<section n:foreach="$sections as $sectionTitle => $fields" class="bo-card">
 			<div class="bo-card-head"><h2>{$sectionTitle}</h2></div>
 			<div class="bo-card-body">
-				{foreach $fields as $field}
-					{if $field->isLocalized()}
-						<fieldset class="bo-field bo-field-locale">
-							<legend>{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</legend>
-							<div class="bo-locale-grid">
-								{formContainer $field->name}
-									{foreach $mutations as $mutation}
-										<div class="bo-locale-item">
-											<label n:name="$mutation" class="bo-locale-label"><span class="bo-pill">{$mutation|upper}</span></label>
-											{if $field->type === Backoffice\Resource\Form\Field::TYPE_LOCALE_TEXTAREA}
-												<textarea n:name="$mutation" n:class="bo-input, $formContainer[$mutation]->hasErrors() ? is-invalid"></textarea>
-											{else}
-												<input n:name="$mutation" n:class="bo-input, $formContainer[$mutation]->hasErrors() ? is-invalid">
-											{/if}
-											<span class="bo-field-error" n:ifcontent>{inputError $mutation}</span>
-										</div>
-									{/foreach}
-								{/formContainer}
-							</div>
-							<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
-						</fieldset>
-					{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_CHECKBOX}
-						<div class="bo-field">
-							<label class="bo-check"><input n:name="$field->name"> {$field->label}</label>
-							<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
-						</div>
-					{else}
-						<div class="bo-field">
-							<label n:name="$field->name">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
-							{if $field->type === Backoffice\Resource\Form\Field::TYPE_TEXTAREA}
-								<textarea n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></textarea>
-							{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_SELECT}
-								<select n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></select>
-							{else}
-								<input n:name="$field->name" n:class="bo-input, $field->type === 'date' ? bo-input-date, $form[$field->name]->hasErrors() ? is-invalid">
-							{/if}
-							<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
-							<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
-						</div>
-					{/if}
-				{/foreach}
+				{include $fieldsTemplate, form: $form, fields: $fields, mutations: $mutations}
 			</div>
 		</section>
 
 		<div class="bo-savebar" data-bo-savebar>
+			<button n:if="$entity && $canDelete" type="submit" form="bo-delete-form" class="bo-btn bo-btn-ghost bo-btn-danger-text">Smazat</button>
 			<span class="bo-savebar-state" data-bo-dirty-label>Všechny změny jsou uložené</span>
 			<span class="bo-spacer"></span>
 			<a class="bo-btn bo-btn-ghost" n:href="this" data-bo-discard>Zahodit změny</a>
@@ -59,4 +22,6 @@
 			<button n:name="save" class="bo-btn bo-btn-primary" data-bo-save>Uložit <kbd class="bo-kbd bo-hide-sm">Ctrl S</kbd></button>
 		</div>
 	</form>
+
+	<form n:if="$entity && $canDelete" id="bo-delete-form" method="post" action="{link delete! id => $entity->getPK()}" class="bo-delete-form" data-bo-confirm="Smazat záznam? Akci nelze vrátit." data-bo-no-guard></form>
 {/block}

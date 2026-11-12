@@ -18,7 +18,7 @@ final class Meta
 
 	private ?string $itemTitle = null;
 
-	/** @var \StORM\Repository<\StORM\Entity>|null */
+	/** @var \StORM\Repository<covariant \StORM\Entity>|null */
 	private ?Repository $repository = null;
 
 	private ?string $replaces = null;
@@ -56,7 +56,7 @@ final class Meta
 	}
 
 	/**
-	 * @param \StORM\Repository<\StORM\Entity> $repository
+	 * @param \StORM\Repository<covariant \StORM\Entity> $repository
 	 */
 	public function repository(Repository $repository): self
 	{
@@ -101,7 +101,7 @@ final class Meta
 	}
 
 	/**
-	 * @return \StORM\Repository<\StORM\Entity>
+	 * @return \StORM\Repository<covariant \StORM\Entity>
 	 */
 	public function getRepository(): Repository
 	{

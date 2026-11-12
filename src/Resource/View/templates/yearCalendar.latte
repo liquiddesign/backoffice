@@ -1,0 +1,27 @@
+{* Roční kalendář. Parametry: $calendar (YearCalendar), $pickTarget (id pole s datem, kam klik na volný den zapíše datum; null = jen ke čtení) *}
+{varType Backoffice\Resource\View\YearCalendar $calendar}
+{varType string|null $pickTarget}
+<div class="bo-cal">
+	<div n:foreach="$calendar->months() as $month" class="bo-cal-month">
+		<div class="bo-cal-name">{$month['name']}</div>
+		<div class="bo-cal-grid bo-cal-head" aria-hidden="true">
+			<span n:foreach="Backoffice\Resource\View\YearCalendar::WEEKDAYS as $weekday">{$weekday}</span>
+		</div>
+		<div class="bo-cal-grid">
+			<span n:if="$month['offset']" style="grid-column: span {$month['offset']}"></span>
+			{foreach $month['days'] as $day}
+				{var $label = $day['label']}
+				{if $day['marked'] && $day['marked']['href']}
+					<a n:class="bo-cal-day, is-marked, $day['today'] ? is-today" href="{$day['marked']['href']}" title="{$label}" aria-label="{$label}">{$day['day']}</a>
+				{elseif $day['marked']}
+					<span n:class="bo-cal-day, is-marked, $day['today'] ? is-today" title="{$label}">{$day['day']}</span>
+				{elseif $pickTarget}
+					<button type="button" n:class="bo-cal-day, $day['weekend'] ? is-weekend, $day['today'] ? is-today" title="{$label}" aria-label="{$label}"
+						data-bo-pick="{$day['date']}" data-bo-pick-target="{$pickTarget}" n:attr="data-bo-weekend: $day['weekend']">{$day['day']}</button>
+				{else}
+					<span n:class="bo-cal-day, $day['weekend'] ? is-weekend, $day['today'] ? is-today" title="{$label}">{$day['day']}</span>
+				{/if}
+			{/foreach}
+		</div>
+	</div>
+</div>

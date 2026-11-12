@@ -27,6 +27,9 @@ final class Icons
 		'close' => '<path d="M18 6 6 18M6 6l12 12"/>',
 		'logo' => '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
 		'dot' => '<circle cx="12" cy="12" r="3"/>',
+		'alert' => '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>',
+		'edit' => '<path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/>',
+		'calendar' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
 	];
 
 	private const ALIASES = [

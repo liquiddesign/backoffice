@@ -220,6 +220,7 @@
 .bo-body .bo-btn-ghost { background: transparent; color: var(--adm-text-2); }
 .bo-body .bo-btn-ghost:hover { background: #eceff3; color: var(--adm-ink); }
 .bo-body .bo-btn-danger { background: #fff; color: var(--adm-danger); border-color: #f1c4c0; }
+.bo-body .bo-btn-sm { height: 30px; padding: 0 10px; font-size: 13px; }
 .bo-body .bo-btn-icon { width: 36px; padding: 0; justify-content: center; }
 
 .bo-pill {
@@ -452,3 +453,54 @@ select.bo-input { padding-right: 28px; }
 	.bo-savebar, .bo-side-collapsed .bo-savebar { left: 0; padding: 10px 16px; }
 	.bo-savebar-state { display: none; }
 }
+
+/* Stránka záznamu: tlačítko smazání v liště (formulář mazání je mimo hlavní formulář) */
+.bo-delete-form { display: none; }
+
+/* Vlastní obrazovka seznamu: rozvržení dvou sloupců (kalendář + boční karty) */
+.bo-split { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.bo-split-main { flex: 3 1 640px; min-width: 0; }
+.bo-split-side { flex: 2 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.bo-card-head h2 { flex: 1; }
+.bo-card-head .bo-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 12.5px; color: var(--adm-muted); }
+.bo-legend-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* Upozornění v obsahu (prázdný rok apod.) */
+.bo-notice { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-radius: var(--adm-radius); font-size: 14px; }
+.bo-notice > span { flex: 1; min-width: 240px; }
+.bo-notice form { margin: 0; }
+.bo-notice-warn { background: var(--adm-warn-soft); color: var(--adm-warn); border: 1px solid #f0d9a8; }
+
+/* Přepínač roku v hlavičce */
+.bo-stepper { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 4px; border: 1px solid #cfd5de; border-radius: var(--adm-radius-sm); background: var(--adm-surface); }
+.bo-stepper a { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--adm-radius-sm); color: var(--adm-text); text-decoration: none; font-size: 16px; }
+.bo-stepper a:hover { background: var(--adm-hover); }
+.bo-stepper strong { min-width: 48px; text-align: center; font-weight: 500; font-size: 15px; }
+
+/* Roční kalendář (Backoffice\Resource\View\YearCalendar) */
+.bo-cal { padding: 16px 18px 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px 22px; }
+.bo-cal-name { font-weight: 500; font-size: 13.5px; margin-bottom: 6px; color: var(--adm-ink); }
+.bo-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.bo-cal-head { font-size: 10.5px; color: #8a94a1; text-align: center; margin-bottom: 2px; }
+.bo-cal-day { height: 24px; border: 0; border-radius: var(--adm-radius-sm); font: 12px var(--adm-font); padding: 0; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--adm-text); text-decoration: none; }
+button.bo-cal-day, a.bo-cal-day { cursor: pointer; }
+button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
+.bo-cal-day.is-weekend { background: #f2f4f7; color: #8a94a1; }
+.bo-cal-day.is-marked { background: var(--adm-primary); color: #fff; font-weight: 700; }
+.bo-cal-day.is-today { font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--adm-primary); }
+.bo-cal-day.is-picked { box-shadow: 0 0 0 2px #2f80ed; }
+
+/* Řádkový seznam v kartě (seznam dnů vedle kalendáře) */
+.bo-rows { padding: 4px 18px 8px; }
+.bo-rows-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--adm-line-soft); font-size: 13.5px; }
+.bo-rows-item:last-child { border-bottom: 0; }
+.bo-rows-item.is-past { opacity: .5; }
+.bo-rows-item > .bo-grow { flex: 1; min-width: 0; }
+
+/* Formulář v boční kartě: jazyková pole pod sebou se štítkem jazyka vlevo */
+.bo-form-stack .bo-locale-grid { grid-template-columns: 1fr; gap: 8px; }
+.bo-form-stack .bo-locale-item { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bo-form-stack .bo-locale-item .bo-input { flex: 1; min-width: 0; }
+.bo-form-stack .bo-locale-item .bo-field-error { flex-basis: 100%; padding-left: 32px; }
+.bo-form-stack .bo-input-date { max-width: none; }
+.bo-field-warn { color: var(--adm-warn); font-size: 12px; }

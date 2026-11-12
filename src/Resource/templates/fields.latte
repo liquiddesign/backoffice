@@ -1,0 +1,46 @@
+{* Pole formuláře agendy. Parametry: $form, $fields (list<Field>), $mutations. Volat uvnitř <form n:name>. *}
+{varType Nette\Forms\Form $form}
+{varType array $fields}
+{varType array $mutations}
+{foreach $fields as $field}
+	{if $field->isLocalized()}
+		<fieldset class="bo-field bo-field-locale">
+			<legend>{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</legend>
+			<div class="bo-locale-grid">
+				{formContainer $field->name}
+					{foreach $mutations as $mutation}
+						<div class="bo-locale-item">
+							<label n:name="$mutation" class="bo-locale-label"><span class="bo-pill">{$mutation|upper}</span></label>
+							{if $field->type === Backoffice\Resource\Form\Field::TYPE_LOCALE_TEXTAREA}
+								<textarea n:name="$mutation" n:class="bo-input, $formContainer[$mutation]->hasErrors() ? is-invalid"></textarea>
+							{else}
+								<input n:name="$mutation" n:class="bo-input, $formContainer[$mutation]->hasErrors() ? is-invalid">
+							{/if}
+							<span class="bo-field-error" n:ifcontent>{inputError $mutation}</span>
+						</div>
+					{/foreach}
+				{/formContainer}
+			</div>
+			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+		</fieldset>
+	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_CHECKBOX}
+		<div class="bo-field">
+			<label class="bo-check"><input n:name="$field->name"> {$field->label}</label>
+			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+		</div>
+	{else}
+		<div class="bo-field">
+			<label n:name="$field->name">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
+			{if $field->type === Backoffice\Resource\Form\Field::TYPE_TEXTAREA}
+				<textarea n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></textarea>
+			{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_SELECT}
+				<select n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></select>
+			{else}
+				<input n:name="$field->name" n:class="bo-input, $field->type === 'date' ? bo-input-date, $form[$field->name]->hasErrors() ? is-invalid">
+			{/if}
+			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
+			<span n:if="$field->type === Backoffice\Resource\Form\Field::TYPE_DATE" class="bo-field-warn" id="{$form[$field->name]->getHtmlId()}-warn" aria-live="polite"></span>
+			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+		</div>
+	{/if}
+{/foreach}

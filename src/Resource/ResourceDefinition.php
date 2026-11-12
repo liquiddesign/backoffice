@@ -48,4 +48,12 @@ abstract class ResourceDefinition
 	abstract public function list(ListBuilder $list): void;
 
 	abstract public function form(FormBuilder $form): void;
+
+	/**
+	 * Vlastní obrazovka místo tabulky seznamu (např. kalendář). Výchozí null = tabulka podle list().
+	 */
+	public function createListView(): ?ListView
+	{
+		return null;
+	}
 }
