@@ -98,7 +98,9 @@ Tabulka podle návrhu „Seznam“: filtr nahoře, tabulka, lišta dole (výběr
 
 Sloupec: `->sortable()` (klik na hlavičku), `->searchable()`, `->link()` (odkaz na stránku záznamu),
 `->editable()` (text, číslo, zaškrtávátko), `->mono()`, `->format()`, `->pattern('{control box-%s}')`
-(hodnota podle vzoru sprintf).
+(hodnota podle vzoru sprintf), `->externalUrl('https://www.youtube.com/playlist?list=%s')` (hodnota
+jako odkaz ven v novém okně), `->value(fn (Entity $row) => …)` (spočítaná hodnota, např. počet
+podřízených záznamů — jen zobrazení, nejde řadit, hledat ani upravovat).
 
 - **Stav v adrese:** `list-q`, `list-f[jméno]`, `list-sort`, `list-dir`, `list-page`, `list-perPage`.
   Filtrovaný seznam jde poslat odkazem. „Aktivní filtry“ ukazují hledání a filtry mimo výchozí

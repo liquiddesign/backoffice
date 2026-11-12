@@ -45,6 +45,11 @@ class Column
 
 	private ?string $directory = null;
 
+	private ?string $externalUrl = null;
+
+	/** @var (\Closure(\StORM\Entity): mixed)|null */
+	private ?\Closure $value = null;
+
 	private ?string $defaultDirection = null;
 
 	/** @var array<string, array{string, string}> hodnota → [štítek, varianta] */
@@ -129,6 +134,43 @@ class Column
 	public function getPattern(): ?string
 	{
 		return $this->pattern;
+	}
+
+	/**
+	 * Hodnota se nebere ze sloupce entity, ale spočítá: fn (Entity $row) => … (např. počet podřízených
+	 * záznamů). Takový sloupec nejde řadit, hledat ani upravovat v řádku.
+	 * @param callable(\StORM\Entity): mixed $value
+	 */
+	public function value(callable $value): static
+	{
+		if ($this->sortable || $this->searchable || $this->editable) {
+			throw new \LogicException("Spočítaný sloupec '{$this->name}' nejde řadit, hledat ani upravovat.");
+		}
+
+		$this->value = \Closure::fromCallable($value);
+
+		return $this;
+	}
+
+	public function getValueCallback(): ?\Closure
+	{
+		return $this->value;
+	}
+
+	/**
+	 * Hodnota je odkaz ven (v novém okně) podle vzoru sprintf, např. 'https://www.youtube.com/playlist?list=%s'.
+	 * Do vzoru jde hodnota sloupce zakódovaná pro URL.
+	 */
+	public function externalUrl(string $pattern): static
+	{
+		$this->externalUrl = $pattern;
+
+		return $this;
+	}
+
+	public function getExternalUrl(): ?string
+	{
+		return $this->externalUrl;
 	}
 
 	/**

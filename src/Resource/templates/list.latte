@@ -135,6 +135,8 @@
 									<a class="bo-cell-link" href="{plink edit id => $pk}">{$value === null || $value === '' ? '(bez názvu)' : $value}</a>
 								{elseif $value === null || $value === ''}
 									<span class="bo-muted">—</span>
+								{elseif $control->cellUrl($row, $column) !== null}
+									<a href="{$control->cellUrl($row, $column)}" target="_blank" rel="noopener">{$value} {$I::get('external', 12)}</a>
 								{else}
 									{$value}
 								{/if}

@@ -152,7 +152,8 @@ final class ListControl extends Control
 	 */
 	public function cellValue(Entity $row, Column $column): mixed
 	{
-		$value = $row->getValue($column->name, $column->mutation);
+		$callback = $column->getValueCallback();
+		$value = $callback !== null ? $callback($row) : $row->getValue($column->name, $column->mutation);
 
 		if ($column->getPattern() !== null && $value !== null && $value !== '') {
 			$value = \sprintf($column->getPattern(), \is_scalar($value) ? (string) $value : '');
@@ -163,6 +164,26 @@ final class ListControl extends Control
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Adresa odkazu ven ze sloupce s ->externalUrl(), nebo null (prázdná hodnota).
+	 */
+	public function cellUrl(Entity $row, Column $column): ?string
+	{
+		$pattern = $column->getExternalUrl();
+
+		if ($pattern === null) {
+			return null;
+		}
+
+		$value = $row->getValue($column->name, $column->mutation);
+
+		if (!\is_scalar($value) || (string) $value === '') {
+			return null;
+		}
+
+		return \sprintf($pattern, \rawurlencode((string) $value));
 	}
 
 	/**
