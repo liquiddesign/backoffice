@@ -70,7 +70,7 @@ final class HolidayResource extends ResourceDefinition
 | **1. Minimální CRUD** | seznam: text, datum, odkaz, jazyky; formulář: text, textarea, integer, checkbox, select, date, localeText; založení, úprava, smazání, log | **Neobchodní dny** | ~1 týden |
 | **2. Seznamy jako v návrhu** | hledání, filtry + „Aktivní filtry“, řazení, stránkování, výběr + hromadné akce, štítky stavů, inline editace + „Uložit vše“, pořadí přetahováním, „Vrátit“ | Fáze obchodování, Typy události, Kontakty, Rozhodci, Překlady | ~1–1,5 týdne |
 | **3. Média a vazby** | upload obrázků a souborů, výběr vazeb s hledáním, ochrana mazání použitých záznamů | Kontaktní osoby, Výroční zprávy, Prezentace, Videa, YouTube playlisty, Rychlé odkazy | ~1,5 týdne |
-| **4. Rich text a SEO** | Tiptap místo TinyMCE, blok URL + SEO s přesměrováním | **Slider** (12. 11. 2026 přesunut z etapy 3 — text na slidu potřebuje editor), Textové boxy, Banery, Příběhy, Layouty, Vstupní stránky, Přesměrování | ~1,5 týdne |
+| **4. Rich text a SEO** | pole rich text s TinyMCE v novém obalu (18. 11. 2026 rozhodnuto: zatím bez Tiptapu), blok URL + SEO s přesměrováním | **Slider** (12. 11. 2026 přesunut z etapy 3 — text na slidu potřebuje editor), Textové boxy, Banery, Příběhy, Layouty, Vstupní stránky, Přesměrování | ~1,5 týdne |
 | **5. Velké a složené** | rychlé seznamy nad tisíci záznamy, vnořený seznam v detailu | **Novinky** (9 900, ČTK, vazby na emise), Konzultanti, Galerie, Nastavení | ~2 týdny |
 
 Mimo generátor (vlastní obrazovky později): Menu a editor stránek, Importy, Dokumentace, Emise,
@@ -85,13 +85,17 @@ Správce souborů, Administrátoři/Role/Log.
 
 ## Rizika
 
-- **HTML z TinyMCE v Tiptapu** — před etapou 4 prohnat všechny texty Tiptapem a porovnat; při velkých
-  ztrátách zatím TinyMCE v novém obalu
+- **HTML z TinyMCE v Tiptapu** — až se bude přecházet na Tiptap, nejdřív prohnat všechny texty Tiptapem
+  a porovnat; etapa 4 zůstává u TinyMCE, takže se obsah zatím nemění
 - **Zpracování obrázků** — starý admin dělá náhledy `detail`/`thumb`; zopakovat přesně
 - **Logika schovaná ve vendoru** (`liquiddesign/web`) — synchronizace stránek, mazání souborů
+
+## Rozhodnuto
+
+- 18. 11. 2026: editor v etapě 4 zůstává TinyMCE (stejné chování a stejné HTML jako ve starém adminu),
+  jen v novém obalu pole; Tiptap případně později. Layouty (šablony TinyMCE) se proto přenášejí beze změny.
 
 ## Otevřené otázky
 
 - adresy: zatím `<prefix>/r/<agenda>`; hezčí (`/neobchodni-dny`) jde přidat později
-- Tiptap hned v etapě 4, nebo nejdřív TinyMCE
 - „slupka“ pro starý obsah v shellu — před etapou 1, nebo později
