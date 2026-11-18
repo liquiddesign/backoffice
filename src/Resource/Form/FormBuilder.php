@@ -71,6 +71,23 @@ final class FormBuilder
 	}
 
 	/**
+	 * Formátovaný text (HTML) v editoru, který dodá aplikace (RichTextEditor). Bez editoru je to
+	 * obyčejné textové pole s HTML.
+	 */
+	public function richText(string $name, string $label): Field
+	{
+		return $this->add(Field::TYPE_RICH_TEXT, $name, $label);
+	}
+
+	/**
+	 * Formátovaný text ve všech jazycích — editory pod sebou, vedle sebe by byly moc úzké.
+	 */
+	public function localeRichText(string $name, string $label): Field
+	{
+		return $this->add(Field::TYPE_LOCALE_RICH_TEXT, $name, $label);
+	}
+
+	/**
 	 * Obrázek nahraný do userfiles; adresáře a úpravy přes ->imageDirectory(). Ve sloupci je jméno souboru.
 	 */
 	public function image(string $name, string $label): Field

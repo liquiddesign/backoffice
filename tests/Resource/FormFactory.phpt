@@ -52,3 +52,47 @@ test('obrázek: upload + Odstranit, do hodnot pro uložení nejde', function ():
 	Assert::exception(fn () => $builder->getFields()['name']->imageDirectory('x'), LogicException::class);
 	Assert::exception(fn () => $builder->getFields()['photo']->imageDirectory('../etc'), InvalidArgumentException::class);
 });
+
+test('formátovaný text: textarea, jazyky v kontejneru, nastavení editoru jen u něj', function (): void {
+	$builder = new FormBuilder();
+	$builder->richText('body', 'Obsah');
+	$builder->localeRichText('text', 'Text')->required()->editorOptions(['height' => 300]);
+	$builder->text('name', 'Název');
+
+	$form = (new FormFactory())->create($builder, ['cs', 'en']);
+	$fields = $builder->getFields();
+
+	Assert::type(Nette\Forms\Controls\TextArea::class, $form['body']);
+	Assert::type(Nette\Forms\Controls\TextArea::class, $form['text']['en']);
+	Assert::true($form['text']['cs']->isRequired());
+	Assert::false($form['text']['en']->isRequired());
+	Assert::true($fields['text']->isLocalized());
+	Assert::true($fields['text']->isRichText());
+	Assert::false($fields['body']->isLocalized());
+	Assert::same(['height' => 300], $fields['text']->getEditorOptions());
+	Assert::same([], (new Backoffice\Resource\Form\PlainRichTextEditor())->config($fields['body'], null));
+	Assert::exception(fn () => $fields['name']->editorOptions(['height' => 1]), LogicException::class);
+});
+
+test('formátovaný text: atributy pro editor, nastavení pole má přednost', function (): void {
+	$builder = new FormBuilder();
+	$field = $builder->richText('body', 'Obsah')->editorOptions(['height' => 300]);
+	$editor = new class implements Backoffice\Resource\Form\RichTextEditor {
+		public function scripts(): array
+		{
+			return ['/js/editor.js'];
+		}
+
+		public function config(Backoffice\Resource\Form\Field $field, ?string $mutation): array
+		{
+			return ['height' => 550, 'lang' => $mutation];
+		}
+	};
+
+	$attributes = FormFactory::richTextAttributes($field, 'en', $editor, true);
+
+	Assert::same('bo-input bo-richtext is-invalid', $attributes['class']);
+	Assert::same(['height' => 300, 'lang' => 'en'], json_decode($attributes['data-bo-richtext'], true));
+	Assert::same(['/js/editor.js'], json_decode($attributes['data-bo-richtext-scripts'], true));
+	Assert::same('{}', FormFactory::richTextAttributes($builder->richText('x', 'X'), null, null, false)['data-bo-richtext']);
+});

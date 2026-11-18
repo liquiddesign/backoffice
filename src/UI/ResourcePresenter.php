@@ -8,6 +8,7 @@ use Backoffice\Media\FileStorage;
 use Backoffice\Media\ImageStorage;
 use Backoffice\Resource\Form\Field;
 use Backoffice\Resource\Form\FormFactory;
+use Backoffice\Resource\Form\RichTextEditor;
 use Backoffice\Resource\List\ListControl;
 use Backoffice\Resource\ListView;
 use Backoffice\Resource\ResourceDefinition;
@@ -49,6 +50,9 @@ final class ResourcePresenter extends BackofficePresenter
 
 	#[Inject]
 	public FileStorage $files;
+
+	#[Inject]
+	public RichTextEditor $richText;
 
 	private ?ResourceDefinition $definition = null;
 
@@ -182,6 +186,13 @@ final class ResourcePresenter extends BackofficePresenter
 			$this->redirect('default', $this->listParameters());
 		}
 
+		$blocked = $entity !== null ? $this->getDefinition()->deleteBlockReason($entity) : null;
+
+		if ($blocked !== null) {
+			$this->flashMessage($blocked, 'error');
+			$this->redirect('default', $this->listParameters());
+		}
+
 		if ($entity !== null && !$force && ($this->getDefinition()->usages($entity) ?? []) !== []) {
 			// Používá se na stránkách — rozhodne se na stránce se seznamem míst.
 			$this->redirect('usage', ['id' => $id]);
@@ -237,7 +248,7 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->template->locations = $this->getDefinition()->usages($entity) ?? [];
 		$this->template->canHide = $meta->getRepository()->getStructure()->getColumn('hidden') !== null;
 		$this->template->hidden = (bool) ($meta->getRepository()->getStructure()->getColumn('hidden') !== null ? $entity->getValue('hidden') : false);
-		$this->template->canDelete = $this->canDelete();
+		$this->template->canDelete = $this->canDelete() && $this->getDefinition()->deleteBlockReason($entity) === null;
 		$this->template->setFile(__DIR__ . '/../Resource/templates/usage.latte');
 	}
 
@@ -501,6 +512,7 @@ final class ResourcePresenter extends BackofficePresenter
 			'fileInfo' => $this->fileInfo(),
 			'relationLabels' => $this->relationLabels(),
 			'entity' => $this->entity,
+			'richText' => $this->richText,
 		];
 	}
 
@@ -617,6 +629,12 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->template->imageUrls = $this->imageUrls();
 		$this->template->fileInfo = $this->fileInfo();
 		$this->template->relationLabels = $this->relationLabels();
+		$this->template->richText = $this->richText;
+
+		if ($this->entity !== null && $this->getDefinition()->deleteBlockReason($this->entity) !== null) {
+			$this->template->canDelete = false;
+		}
+
 		$lock = $this->entity !== null ? $this->getDefinition()->lockReason($this->entity) : null;
 		$this->template->lockReason = $lock;
 

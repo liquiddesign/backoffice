@@ -135,7 +135,7 @@ a vrácení — např. pro smazání cache, ze které čte web (Překlady).
 ## Formulář (`FormBuilder`)
 
 `section(title)`, `text`, `textarea`, `integer`, `checkbox`, `select(items)`, `date`,
-`localeText`, `localeTextarea`. Pole: `->required()`, `->description()`, `->items()`, `->default()`,
+`localeText`, `localeTextarea`, `richText`, `localeRichText`. Pole: `->required()`, `->description()`, `->items()`, `->default()`,
 `->unique(zpráva)` (hodnota se v agendě nesmí opakovat; kontrola při uložení, chyba u pole).
 
 - jazyková pole: kontejner `name[cs]`, `name[en]` vedle sebe; povinný je jen hlavní (první) jazyk
@@ -190,6 +190,21 @@ $form->file('storageName', 'PDF dokument')
 - Při smazání záznamu se soubor přesune do koše mimo web (`%tempDir%/backoffice-trash`), „Vrátit“ ho
   vrátí; koš se čistí po dni.
 
+### Formátovaný text
+
+`richText('body', 'Obsah')`, `localeRichText('text', 'Obsah')` — HTML v editoru; jazyky jsou pod sebou.
+Editor dodává aplikace službou `Backoffice\Resource\Form\RichTextEditor`:
+
+- `scripts()` — adresy skriptů; balík je načte (jednou, v pořadí), až je na stránce takové pole;
+- `config(field, mutation)` — nastavení editoru pro pole (JSON v `data-bo-richtext`); navrch se přidá
+  `->editorOptions([...])` pole;
+- poslední skript nastaví `window.BackofficeRichText = { init(textarea, config, changed), save() }`:
+  `init` spustí editor nad textarea a při každé úpravě zavolá `changed()` (lišta „Neuložené změny“),
+  `save` před odesláním formuláře přepíše obsah editorů do textarea.
+
+Bez služby (výchozí `PlainRichTextEditor`) zůstane textarea s HTML. Balík HTML nečistí — co se smí
+uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého adminu (`App\Web\Backoffice\TinyMceEditor`).
+
 ### Výběr, viditelnost, vazba
 
 - `select(...)->prompt('na obou webech')` — text prázdné volby.
@@ -207,6 +222,7 @@ $form->file('storageName', 'PDF dokument')
 | `validate(form, entity)` | vlastní kontrola (chyby přes `$form['pole']->addError()`) |
 | `beforeSave(data, values, entity)` | úprava dat před uložením (pole mimo sloupce, odvozené sloupce) |
 | `lockReason(entity)` | záznam jen ke čtení (z importu): důvod se ukáže nahoře, formulář je zamčený, nejde smazat, hromadné akce ho přeskočí |
+| `deleteBlockReason(entity)` | záznam jde upravit, ale ne smazat (systémový): koš je šedý s důvodem v popisku, hromadné mazání ho přeskočí |
 
 ## Vlastní obrazovka seznamu (`ListView`)
 

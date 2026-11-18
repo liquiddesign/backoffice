@@ -90,6 +90,17 @@ abstract class ResourceDefinition
 	}
 
 	/**
+	 * Záznam, který jde upravit, ale ne smazat (např. systémový — web s ním počítá): vrátí důvod,
+	 * jinak null. V seznamu pak chybí koš a hromadné mazání ho přeskočí.
+	 */
+	public function deleteBlockReason(Entity $entity): ?string
+	{
+		unset($entity);
+
+		return null;
+	}
+
+	/**
 	 * Výchozí hodnoty formuláře ze záznamu — pro pole, která nejsou sloupcem (typ, odvozené hodnoty).
 	 * @param array<string, mixed> $defaults
 	 * @return array<string, mixed>

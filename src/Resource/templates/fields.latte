@@ -1,4 +1,5 @@
-{* Pole formuláře agendy. Parametry: $form, $fields (list<Field>), $mutations. Volat uvnitř <form n:name>. *}
+{* Pole formuláře agendy. Parametry: $form, $fields (list<Field>), $mutations. Volat uvnitř <form n:name>.
+   Formátovaný text potřebuje $richText (Backoffice\Resource\Form\RichTextEditor) — dává ho presenter. *}
 {varType Nette\Forms\Form $form}
 {varType array $fields}
 {varType array $mutations}
@@ -8,12 +9,14 @@
 	{if $field->isLocalized()}
 		<fieldset class="bo-field bo-field-locale">
 			<legend>{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</legend>
-			<div class="bo-locale-grid">
+			<div n:class="bo-locale-grid, $field->isRichText() ? is-stacked">
 				{formContainer $field->name}
 					{foreach $mutations as $mutation}
 						<div class="bo-locale-item">
 							<label n:name="$mutation" class="bo-locale-label"><span class="bo-pill">{$mutation|upper}</span></label>
-							{if $field->type === Backoffice\Resource\Form\Field::TYPE_LOCALE_TEXTAREA}
+							{if $field->isRichText()}
+								{include richText, field: $field, mutation: $mutation, control: $formContainer[$mutation]}
+							{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_LOCALE_TEXTAREA}
 								<textarea n:name="$mutation" n:class="bo-input, $formContainer[$mutation]->hasErrors() ? is-invalid"></textarea>
 							{else}
 								<input n:name="$mutation" n:class="bo-input, $formContainer[$mutation]->hasErrors() ? is-invalid">
@@ -81,7 +84,9 @@
 	{else}
 		<div class="bo-field">
 			<label n:name="$field->name">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
-			{if $field->type === Backoffice\Resource\Form\Field::TYPE_TEXTAREA}
+			{if $field->isRichText()}
+				{include richText, field: $field, mutation: null, control: $form[$field->name]}
+			{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_TEXTAREA}
 				<textarea n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></textarea>
 			{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_SELECT}
 				<select n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></select>
@@ -95,3 +100,7 @@
 	{/if}
 	</div>
 {/foreach}
+
+{define richText, Backoffice\Resource\Form\Field $field, ?string $mutation, Nette\Forms\Controls\BaseControl $control}
+	{$control->getControlPart()->addAttributes(Backoffice\Resource\Form\FormFactory::richTextAttributes($field, $mutation, $richText ?? null, $control->hasErrors()))}
+{/define}

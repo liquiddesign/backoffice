@@ -25,6 +25,8 @@ final class Field
 	public const TYPE_IMAGE = 'image';
 	public const TYPE_FILE = 'file';
 	public const TYPE_RELATION = 'relation';
+	public const TYPE_RICH_TEXT = 'richText';
+	public const TYPE_LOCALE_RICH_TEXT = 'localeRichText';
 
 	private bool $required = false;
 
@@ -62,6 +64,9 @@ final class Field
 	private ?string $sizeColumn = null;
 
 	private ?string $extensionColumn = null;
+
+	/** @var array<string, mixed> */
+	private array $editorOptions = [];
 
 	/** @var array<string, (\Closure(\Nette\Utils\Image): void)|null> adresář v userfiles → úprava obrázku */
 	private array $imageDirectories = [];
@@ -332,8 +337,37 @@ final class Field
 		return $this->items;
 	}
 
+	/**
+	 * Formátovaný text: nastavení editoru jen pro tohle pole (např. ['height' => 300]). Přidá se
+	 * k tomu, co vrátí RichTextEditor::config() — co editor s klíči udělá, je věc aplikace.
+	 * @param array<string, mixed> $options
+	 */
+	public function editorOptions(array $options): self
+	{
+		if (!$this->isRichText()) {
+			throw new \LogicException("Pole '{$this->name}' není formátovaný text.");
+		}
+
+		$this->editorOptions = $options + $this->editorOptions;
+
+		return $this;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function getEditorOptions(): array
+	{
+		return $this->editorOptions;
+	}
+
 	public function isLocalized(): bool
 	{
-		return Arrays::contains([self::TYPE_LOCALE_TEXT, self::TYPE_LOCALE_TEXTAREA], $this->type);
+		return Arrays::contains([self::TYPE_LOCALE_TEXT, self::TYPE_LOCALE_TEXTAREA, self::TYPE_LOCALE_RICH_TEXT], $this->type);
+	}
+
+	public function isRichText(): bool
+	{
+		return $this->type === self::TYPE_RICH_TEXT || $this->type === self::TYPE_LOCALE_RICH_TEXT;
 	}
 }

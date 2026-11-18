@@ -420,6 +420,9 @@ textarea.bo-input { height: auto; min-height: 90px; padding: 8px 10px; }
 .bo-locale-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 20px; }
 .bo-locale-item { display: flex; flex-direction: column; gap: 4px; }
 .bo-locale-label { display: flex; }
+/* Formátovaný text: jazyky pod sebou (editor vedle editoru by byl moc úzký). */
+.bo-locale-grid.is-stacked { grid-template-columns: 1fr; gap: 16px; }
+textarea.bo-richtext { min-height: 260px; font-family: var(--adm-mono, ui-monospace, monospace); font-size: 13px; }
 select.bo-input { padding-right: 28px; }
 
 .bo-savebar {

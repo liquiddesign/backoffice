@@ -119,6 +119,70 @@
 		(next || input).focus();
 	});
 
+	// Formátovaný text: skripty editoru (RichTextEditor::scripts()) se načtou jednou, pak se nad každou
+	// textarea[data-bo-richtext] zavolá window.BackofficeRichText.init(textarea, config, changed).
+	// Bez editoru zůstane textarea s HTML.
+	var richTexts = document.querySelectorAll('textarea[data-bo-richtext]');
+
+	if (richTexts.length) {
+		var loadedScripts = {};
+		var loadScript = function (src) {
+			if (!loadedScripts[src]) {
+				loadedScripts[src] = new Promise(function (resolve, reject) {
+					var script = document.createElement('script');
+					var nonce = document.querySelector('script[nonce]');
+					script.src = src;
+					script.async = false;
+
+					if (nonce && nonce.nonce) {
+						script.nonce = nonce.nonce;
+					}
+
+					script.onload = resolve;
+					script.onerror = function () { reject(new Error('Nenačetl se skript editoru: ' + src)); };
+					document.head.appendChild(script);
+				});
+			}
+
+			return loadedScripts[src];
+		};
+		var parseJson = function (value, fallback) {
+			try {
+				return value ? JSON.parse(value) : fallback;
+			} catch (e) {
+				return fallback;
+			}
+		};
+
+		richTexts.forEach(function (textarea) {
+			var scripts = parseJson(textarea.getAttribute('data-bo-richtext-scripts'), []);
+			var config = parseJson(textarea.getAttribute('data-bo-richtext'), {});
+			var changed = function () {
+				textarea.dispatchEvent(new Event('input', { bubbles: true }));
+			};
+
+			scripts.reduce(function (chain, src) {
+				return chain.then(function () { return loadScript(src); });
+			}, Promise.resolve()).then(function () {
+				if (window.BackofficeRichText && !textarea.disabled && !textarea.readOnly) {
+					window.BackofficeRichText.init(textarea, config, changed);
+				}
+			}).catch(function (error) {
+				// Editor se nenačetl: zůstane pole s HTML, aby šlo text aspoň uložit.
+				if (window.console) {
+					window.console.error(error);
+				}
+			});
+		});
+
+		// Obsah editorů zpátky do textarea před odesláním (zachytává se dřív než ostatní posluchače).
+		document.addEventListener('submit', function () {
+			if (window.BackofficeRichText && typeof window.BackofficeRichText.save === 'function') {
+				window.BackofficeRichText.save();
+			}
+		}, true);
+	}
+
 	// Formulář agendy: neuložené změny, Ctrl S, varování při odchodu.
 	var form = document.querySelector('[data-bo-form]');
 

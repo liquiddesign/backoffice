@@ -10,6 +10,8 @@ use Backoffice\Bridge\LegacyChangeLogger;
 use Backoffice\Media\FileStorage;
 use Backoffice\Media\ImageStorage;
 use Backoffice\Resource\Form\FormFactory;
+use Backoffice\Resource\Form\PlainRichTextEditor;
+use Backoffice\Resource\Form\RichTextEditor;
 use Backoffice\Resource\ResourceDefinition;
 use Backoffice\Resource\ResourceRegistry;
 use Backoffice\Routing\Routes;
@@ -159,6 +161,12 @@ final class BackofficeExtension extends CompilerExtension
 
 		$this->registerAccessChecker($config->bridge->enabled);
 		$this->registerChangeLogger($config->bridge->enabled);
+
+		// Editor formátovaného textu: služba projektu (RichTextEditor) má přednost, jinak textarea.
+		if ($builder->findByType(RichTextEditor::class) === []) {
+			$builder->addDefinition($this->prefix('richTextEditor'))
+				->setFactory(PlainRichTextEditor::class);
+		}
 
 		if ($config->bridge->enabled) {
 			$application = $builder->getDefinitionByType(Application::class);

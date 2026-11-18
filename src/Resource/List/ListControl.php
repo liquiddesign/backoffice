@@ -65,17 +65,20 @@ final class ListControl extends Control
 		$rows = $collection->toArray();
 		$usages = [];
 		$locked = [];
+		$undeletable = [];
 
 		foreach ($rows as $row) {
 			$locations = $presenter->getDefinition()->usages($row);
 			$usages[(string) $row->getPK()] = $locations === null ? null : \count($locations);
 			$locked[(string) $row->getPK()] = $presenter->getDefinition()->lockReason($row);
+			$undeletable[(string) $row->getPK()] = $presenter->getDefinition()->deleteBlockReason($row);
 		}
 
 		$template->list = $list;
 		$template->rows = $rows;
 		$template->usages = $usages;
 		$template->locked = $locked;
+		$template->undeletable = $undeletable;
 		$template->pager = $pager;
 		$template->sortKey = $sortKey;
 		$template->direction = $direction;
@@ -295,7 +298,9 @@ final class ListControl extends Control
 		foreach ($this->loadEntities($ids) as $pk => $entity) {
 			$locations = $presenter->getDefinition()->usages($entity);
 
-			if (($locations !== null && $locations !== []) || $presenter->getDefinition()->lockReason($entity) !== null) {
+			$definition = $presenter->getDefinition();
+
+			if (($locations !== null && $locations !== []) || $definition->lockReason($entity) !== null || $definition->deleteBlockReason($entity) !== null) {
 				$skipped[] = $presenter->entityTitle($entity);
 
 				continue;
@@ -322,7 +327,7 @@ final class ListControl extends Control
 		}
 
 		if ($skipped !== []) {
-			$presenter->flashMessage('Nesmazáno (používá se na stránkách, nebo nejde měnit): ' . \implode(', ', $skipped) . '.', 'warning');
+			$presenter->flashMessage('Nesmazáno (používá se na stránkách, nebo nejde mazat): ' . \implode(', ', $skipped) . '.', 'warning');
 		}
 
 		if ($failed > 0) {

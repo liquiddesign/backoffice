@@ -6,6 +6,7 @@ namespace Backoffice\Resource\Form;
 
 use Nette\Application\UI\Form;
 use Nette\Forms\Controls\BaseControl;
+use Nette\Utils\Json;
 use Nette\Utils\Strings;
 use StORM\Entity;
 use StORM\Meta\Structure;
@@ -146,6 +147,22 @@ final class FormFactory
 	}
 
 	/**
+	 * Atributy textarea formátovaného textu: nastavení editoru (RichTextEditor::config() + pole)
+	 * a skripty, které balíkový JS načte (viz RichTextEditor).
+	 * @return array<string, string>
+	 */
+	public static function richTextAttributes(Field $field, ?string $mutation, ?RichTextEditor $editor, bool $invalid): array
+	{
+		$config = $field->getEditorOptions() + ($editor?->config($field, $mutation) ?? []);
+
+		return [
+			'class' => 'bo-input bo-richtext' . ($invalid ? ' is-invalid' : ''),
+			'data-bo-richtext' => Json::encode((object) $config),
+			'data-bo-richtext-scripts' => Json::encode($editor?->scripts() ?? []),
+		];
+	}
+
+	/**
 	 * @param list<string> $mutations
 	 */
 	private function addLocalized(Form $form, Field $field, array $mutations): void
@@ -153,7 +170,7 @@ final class FormFactory
 		$container = $form->addContainer($field->name);
 
 		foreach ($mutations as $index => $mutation) {
-			$control = $field->type === Field::TYPE_LOCALE_TEXTAREA
+			$control = $field->type === Field::TYPE_LOCALE_TEXTAREA || $field->type === Field::TYPE_LOCALE_RICH_TEXT
 				? $container->addTextArea($mutation, $field->label)
 				: $container->addText($mutation, $field->label);
 
@@ -190,7 +207,7 @@ final class FormFactory
 	private function createControl(Form $form, Field $field): BaseControl
 	{
 		return match ($field->type) {
-			Field::TYPE_TEXTAREA => $form->addTextArea($field->name, $field->label),
+			Field::TYPE_TEXTAREA, Field::TYPE_RICH_TEXT => $form->addTextArea($field->name, $field->label),
 			Field::TYPE_INTEGER => $form->addInteger($field->name, $field->label),
 			Field::TYPE_CHECKBOX => $form->addCheckbox($field->name, $field->label),
 			Field::TYPE_SELECT => $this->createSelect($form, $field),
