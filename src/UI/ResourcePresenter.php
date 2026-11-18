@@ -85,6 +85,41 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->template->setFile(__DIR__ . '/../Resource/templates/default.latte');
 	}
 
+	/**
+	 * Vlastní obrazovka seznamu s rozbaleným záznamem (ListView::editedId()): formulář se naváže
+	 * na záznam stejně jako na stránce záznamu.
+	 */
+	public function actionDefault(): void
+	{
+		if (!$this->hasListView()) {
+			return;
+		}
+
+		$view = $this->getListView();
+		$id = $view->editedId();
+
+		if ($id === null || $id === ListView::EDIT_NEW) {
+			return;
+		}
+
+		$definition = $this->getDefinition();
+		$entity = $definition->getMeta()->getRepository()->one($id);
+
+		if ($entity === null || !$this->isAllowedAction('edit') || $definition->lockReason($entity) !== null) {
+			$view->closeEdit();
+
+			return;
+		}
+
+		$this->entity = $entity;
+
+		if ($this['form']->isSubmitted()) {
+			return;
+		}
+
+		$this['form']->setDefaults($definition->formDefaults($this->formFactory->defaults($definition->buildForm(), $entity), $entity));
+	}
+
 	public function actionNew(): void
 	{
 		if (!$this->getDefinition()->getMeta()->hasCreate()) {
@@ -455,6 +490,20 @@ final class ResourcePresenter extends BackofficePresenter
 		return \array_keys($this->getDefinition()->getMeta()->getRepository()->getConnection()->getAvailableMutations());
 	}
 
+	/**
+	 * Data pro šablonu polí formuláře k upravovanému záznamu: náhledy obrázků, soubory, popisky vazeb.
+	 * @return array{imageUrls: array<string, string>, fileInfo: array<string, array{string, string|null, int|null}>, relationLabels: array<string, string>, entity: ?\StORM\Entity}
+	 */
+	public function formContext(): array
+	{
+		return [
+			'imageUrls' => $this->imageUrls(),
+			'fileInfo' => $this->fileInfo(),
+			'relationLabels' => $this->relationLabels(),
+			'entity' => $this->entity,
+		];
+	}
+
 	public function entityTitle(Entity $entity): string
 	{
 		foreach ($this->getDefinition()->buildList()->getColumns() as $column) {
@@ -520,8 +569,9 @@ final class ResourcePresenter extends BackofficePresenter
 			}
 
 			if ($this->getAction() === 'default') {
-				// Formulář vložený do vlastní obrazovky seznamu (ListView::newForm()).
-				$this->flashMessage('Přidáno: ' . $this->entityTitle($entity), 'success');
+				// Formulář vložený do vlastní obrazovky seznamu (ListView::newForm(), editForm()).
+				$this->getListView()->closeEdit();
+				$this->flashMessage(($type === ChangeLogger::TYPE_NEW ? 'Přidáno: ' : 'Uloženo: ') . $this->entityTitle($entity), 'success');
 				$this->redirect('default', $this->listParameters());
 			}
 

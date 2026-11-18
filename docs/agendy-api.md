@@ -228,7 +228,10 @@ Ukládání, mazání, práva a log zůstávají na presenteru. Obrazovka má k 
 | `headerButtons()` | prvky v hlavičce vpravo (přepínač roku); výchozí „Nový: …“ podle práva |
 | `focus(Entity)` | nastaví stav tak, aby byl záznam vidět (rok podle data) — volá se po uložení, před smazáním a na detailu |
 | `newForm()` | formulář nového záznamu k vložení do obrazovky (null bez práva); uloží se jako stránka „Nový“ a vrátí na seznam |
-| `prepareFormTemplate()` | do šablony `$fieldsTemplate`, `$fields`, `$mutations`, `$newForm` — pole se vykreslí `{include $fieldsTemplate, form: $form, fields: $fields, mutations: $mutations}` |
+| `prepareFormTemplate()` | do šablony `$fieldsTemplate`, `$fields`, `$mutations`, `$newForm` a k rozbalenému záznamu `$imageUrls`, `$fileInfo`, `$relationLabels` — pole se vykreslí `{include $fieldsTemplate, form: $form, fields: $fields, mutations: $mutations}` |
+| `editedId()`, `closeEdit()`, `editForm()` | úprava v řádku: obrazovka vrátí id rozbaleného záznamu (nebo `ListView::EDIT_NEW`), presenter na něj naváže formulář `form` a uloží ho jako stránka záznamu; po uložení zavolá `closeEdit()` a vrátí se na seznam |
+| signál `toggle!` (`id`, `column`, POST `value=1\|0`) | přepínač v řádku, uloží se hned; jen sloupec seznamu `checkbox()->editable()` bez jazyka |
+| signál `reorder!` (POST `ids[]`) | nové pořadí po přetažení, uloží se hned do sloupce `priority()` seznamu |
 | `canCreate()`, `canEdit()`, `editLink(Entity)`, `logChange(type, id)` | práva, odkaz na detail, zápis do logu, když obrazovka ukládá sama (signál) |
 
 Stav obrazovky patří do `#[Persistent]` vlastností — v adrese jsou jako `view-<jméno>` (`?view-year=2027`)
@@ -239,6 +242,13 @@ Komponenty pro obrazovky: `Backoffice\Resource\View\YearCalendar` (roční kalen
 `bo-split`, `bo-notice`, `bo-stepper`, `bo-rows`, `bo-form-stack`.
 
 Příklad: `App\Stock\Backoffice\HolidayCalendar` v PSE (neobchodní dny podle návrhu).
+
+Řádkový seznam s úpravou v řádku (třídy `bo-rowlist*`, náhled `bo-preview*`): kontejner
+`data-bo-reorder="<id formuláře se signálem reorder!>"`, položky `data-bo-reorder-item="<id>"`
+a úchyt `data-bo-grip` — pořadí přetažením nebo šipkami se odešle hned. Přepínač je malý formulář
+na `toggle!` se skrytým `value` a zaškrtávátkem `data-bo-autosubmit`. Mazání z rozbaleného řádku
+musí mít vlastní formulář (tlačítko s `form="…"`), jinak by se poslalo `_do` editačního formuláře.
+Příklad: `App\Web\Backoffice\QuickLinksView` v PSE (rychlé odkazy podle návrhu).
 
 ## Mazání použitých záznamů
 

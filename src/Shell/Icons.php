@@ -35,6 +35,8 @@ final class Icons
 		'chevron-down' => '<path d="M6 9l6 6 6-6"/>',
 		'chevron-up' => '<path d="M6 15l6-6 6 6"/>',
 		'check' => '<path d="M5 12l5 5 9-10"/>',
+		'plus' => '<path d="M12 5v14M5 12h14"/>',
+		'link' => '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
 		'calendar' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
 	];
 

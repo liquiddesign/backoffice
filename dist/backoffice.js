@@ -592,4 +592,108 @@
 			}
 		});
 	});
+
+	// Pořadí ve vlastní obrazovce (ListView::handleReorder): kontejner data-bo-reorder="<id formuláře>",
+	// položky data-bo-reorder-item="<id záznamu>", úchyt data-bo-grip. Nové pořadí se odešle hned
+	// (po šipkách s krátkým zpožděním, ať jde posunout o víc míst najednou).
+	document.querySelectorAll('[data-bo-reorder]').forEach(function (box) {
+		var form = document.getElementById(box.dataset.boReorder);
+		var dragged = null;
+		var timer = null;
+
+		if (!form) {
+			return;
+		}
+
+		var items = function () {
+			return Array.prototype.slice.call(box.querySelectorAll('[data-bo-reorder-item]'));
+		};
+
+		var submit = function () {
+			form.querySelectorAll('input[name="ids[]"]').forEach(function (input) { input.remove(); });
+			items().forEach(function (item) {
+				var input = document.createElement('input');
+				input.type = 'hidden';
+				input.name = 'ids[]';
+				input.value = item.dataset.boReorderItem;
+				form.appendChild(input);
+			});
+			box.classList.add('is-saving');
+			form.requestSubmit();
+		};
+
+		box.addEventListener('pointerdown', function (event) {
+			var grip = event.target.closest('[data-bo-grip]');
+
+			if (grip) {
+				grip.closest('[data-bo-reorder-item]').draggable = true;
+			}
+		});
+
+		box.addEventListener('dragstart', function (event) {
+			dragged = event.target.closest('[data-bo-reorder-item]');
+
+			if (!dragged) {
+				return;
+			}
+
+			dragged.classList.add('is-dragging');
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData('text/plain', '');
+		});
+
+		box.addEventListener('dragover', function (event) {
+			if (!dragged) {
+				return;
+			}
+
+			event.preventDefault();
+			var target = event.target.closest('[data-bo-reorder-item]');
+
+			if (!target || target === dragged) {
+				return;
+			}
+
+			var rect = target.getBoundingClientRect();
+			box.insertBefore(dragged, event.clientY > rect.top + rect.height / 2 ? target.nextSibling : target);
+		});
+
+		box.addEventListener('dragend', function () {
+			if (!dragged) {
+				return;
+			}
+
+			dragged.classList.remove('is-dragging');
+			dragged.draggable = false;
+			dragged = null;
+			var order = items().map(function (item) { return item.dataset.boReorderItem; }).join(',');
+
+			if (order !== box.dataset.boOrder) {
+				submit();
+			}
+		});
+
+		box.dataset.boOrder = items().map(function (item) { return item.dataset.boReorderItem; }).join(',');
+
+		box.addEventListener('keydown', function (event) {
+			var grip = event.target.closest('[data-bo-grip]');
+
+			if (!grip || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) {
+				return;
+			}
+
+			event.preventDefault();
+			var item = grip.closest('[data-bo-reorder-item]');
+			var sibling = event.key === 'ArrowUp' ? item.previousElementSibling : item.nextElementSibling;
+
+			if (!sibling || !sibling.matches('[data-bo-reorder-item]')) {
+				return;
+			}
+
+			box.insertBefore(item, event.key === 'ArrowUp' ? sibling : sibling.nextSibling);
+			grip.focus();
+			window.clearTimeout(timer);
+			timer = window.setTimeout(submit, 700);
+		});
+	});
 })();
