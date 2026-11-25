@@ -117,6 +117,23 @@ podřízených záznamů — jen zobrazení, nejde řadit, hledat ani upravovat)
   Vrácení obnoví jen řádek agendy, ne data, která databáze smazala kaskádou.
 - **Práva:** úpravy v řádku, hromadné akce a mazání = právo na detail (`:…:detail`).
 
+### Export a import CSV
+
+```php
+$list->csv(['fromUrl' => 'Z URL', 'toUrl' => 'Do URL', 'fromMutation' => 'Z mutace'], ['fromUrl', 'fromMutation']);
+```
+
+- Nad seznamem přibude **Export CSV** — výsledek hledání a filtrů v aktuálním řazení, bez stránkování
+  (signál `list-export!`, soubor `<agenda>-<datum>.csv`, UTF-8 s BOM a středníkem, aby ho otevřel
+  český Excel; hodnoty začínající `=`, `+`, `@` dostanou apostrof proti vzorcům).
+- S druhým parametrem (klíč) i **Import CSV** (`/r/<agenda>/import`, právo jako na úpravu záznamu):
+  sloupce se poznají podle záhlaví i jména sloupce, oddělovač (`;` `,` tab `|`) ze záhlaví, soubor
+  v UTF-8 i ve Windows-1250 (Excel). Řádek se stejnými hodnotami klíče upraví existující záznam,
+  ostatní se založí, nic se nemaže. Každý řádek projde `importRow()`. Celý import je v transakci:
+  první chyba vrátí všechno a hlášení řekne číslo řádku. Výsledek: „X nových, Y upravených, Z beze
+  změny“, změny jdou do logu jednotlivě.
+- Sloupce jsou sloupce entity bez jazyků.
+
 ### Agenda bez zakládání, mazání nebo stránky záznamu
 
 Číselníky z importu (Fáze obchodování, Typy události, Překlady):
@@ -205,6 +222,15 @@ Editor dodává aplikace službou `Backoffice\Resource\Form\RichTextEditor`:
 Bez služby (výchozí `PlainRichTextEditor`) zůstane textarea s HTML. Balík HTML nečistí — co se smí
 uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého adminu (`App\Web\Backoffice\TinyMceEditor`).
 
+### Adresa a SEO: text před polem, počítadlo znaků
+
+- `text('fromUrl', 'Z adresy')->prefix('/')`, u jazykového pole `->prefix(['cs' => '/', 'en' => '/en/'])`
+  — pevný text před polem, neukládá se (jen jednořádková pole).
+- `localeText('title', 'Titulek')->counter(70)` — pod polem „42 / 70“, přes doporučenou délku
+  červeně; délku neomezuje (textová pole i textarea).
+- Pole, které není sloupcem (zaškrtávátko „přesměrovat starou adresu“), se do dat k uložení dostane,
+  zpracuje ho `beforeSave()` (v `$values`) a samo se neuloží. Výchozí hodnotu mu dá `formDefaults()`.
+
 ### Výběr, viditelnost, vazba
 
 - `select(...)->prompt('na obou webech')` — text prázdné volby.
@@ -223,6 +249,7 @@ uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého admin
 | `beforeSave(data, values, entity)` | úprava dat před uložením (pole mimo sloupce, odvozené sloupce) |
 | `lockReason(entity)` | záznam jen ke čtení (z importu): důvod se ukáže nahoře, formulář je zamčený, nejde smazat, hromadné akce ho přeskočí |
 | `deleteBlockReason(entity)` | záznam jde upravit, ale ne smazat (systémový): koš je šedý s důvodem v popisku, hromadné mazání ho přeskočí |
+| `importRow(row)` | řádek importu CSV před uložením (sloupec → text): vrátí data k uložení, nepoužitelný řádek ohlásí `CsvRowException` s důvodem; smí doplnit sloupec klíče, který soubor nemá |
 | `formNotices(entity)` | upozornění nad formulářem záznamu: `[[FormNotice::WARN, 'text'], [FormNotice::INFO, 'text']]` (žlutě / modře) — např. kde se záznam na webu ukáže, kontrola odkazů |
 
 ## Vlastní obrazovka seznamu (`ListView`)

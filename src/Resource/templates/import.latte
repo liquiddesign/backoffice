@@ -1,0 +1,37 @@
+{* Import CSV do agendy (ListBuilder::csv() s klíčem). *}
+{varType array $csvColumns}
+{varType array $csvKey}
+{varType string|null $exportLink}
+{block content}
+	<form n:name="importForm" class="bo-form" novalidate>
+		<div n:foreach="$form->getOwnErrors() as $error" class="bo-flash bo-flash-error" role="alert"><span>{$error}</span></div>
+		<section class="bo-card">
+			<div class="bo-card-head"><h2>Soubor</h2></div>
+			<div class="bo-card-body">
+				<div class="bo-field">
+					<label n:name="file">Soubor CSV <span class="bo-req" aria-hidden="true">*</span></label>
+					<div n:class="bo-image-drop, bo-file-drop, $form['file']->hasErrors() ? is-invalid" data-bo-file>
+						<input n:name="file" class="bo-image-input">
+						<span class="bo-image-text" data-bo-image-text>Přetáhněte soubor, nebo <u>vyberte</u></span>
+					</div>
+					<span class="bo-field-error" n:ifcontent>{inputError file}</span>
+				</div>
+				<p class="bo-help">
+					První řádek je záhlaví. Sloupce:
+					{foreach $csvColumns as $column => $label}<strong>{$label}</strong>{if in_array($column, $csvKey, true)} (klíč){/if}{sep}, {/sep}{/foreach}.
+					Řádek se stejným klíčem jako existující záznam ho upraví, ostatní se přidají; nic se nemaže.
+					Při chybě se neuloží nic a hlášení řekne číslo řádku.
+				</p>
+				<p class="bo-help">
+					Oddělovač (středník, čárka, tabulátor) se pozná sám; soubor může být v UTF-8 i tak, jak ho uloží Excel.
+					<a n:if="$exportLink" href="{$exportLink}">Stáhnout současná data jako vzor</a>
+				</p>
+			</div>
+		</section>
+		<div class="bo-savebar">
+			<span class="bo-spacer"></span>
+			<a class="bo-btn bo-btn-ghost" n:href="default">Zrušit</a>
+			<button n:name="import" class="bo-btn bo-btn-primary">Importovat</button>
+		</div>
+	</form>
+{/block}

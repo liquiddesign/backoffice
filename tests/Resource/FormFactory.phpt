@@ -96,3 +96,21 @@ test('formátovaný text: atributy pro editor, nastavení pole má přednost', f
 	Assert::same(['/js/editor.js'], json_decode($attributes['data-bo-richtext-scripts'], true));
 	Assert::same('{}', FormFactory::richTextAttributes($builder->richText('x', 'X'), null, null, false)['data-bo-richtext']);
 });
+
+test('počítadlo znaků a text před polem jen u textových polí', function (): void {
+	$builder = new FormBuilder();
+	$title = $builder->localeText('title', 'Titulek')->counter(70);
+	$url = $builder->localeText('url', 'Adresa')->prefix(['cs' => 'pse.cz/', 'en' => 'pse.cz/en/']);
+	$path = $builder->text('path', 'Cesta')->prefix('/');
+	$description = $builder->textarea('description', 'Popisek')->counter(160);
+
+	Assert::same(70, $title->getCounter());
+	Assert::same(160, $description->getCounter());
+	Assert::null($url->getCounter());
+	Assert::same('pse.cz/en/', $url->getPrefix('en'));
+	Assert::null($url->getPrefix('de'));
+	Assert::same('/', $path->getPrefix());
+	Assert::exception(fn () => $builder->checkbox('x', 'X')->counter(10), LogicException::class);
+	Assert::exception(fn () => $builder->textarea('y', 'Y')->prefix('/'), LogicException::class);
+	Assert::exception(fn () => $builder->localeRichText('z', 'Z')->counter(10), LogicException::class);
+});

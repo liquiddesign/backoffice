@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Backoffice\Resource\List;
 
+use Backoffice\Resource\Csv\CsvFile;
 use Backoffice\Security\ChangeLogger;
 use Backoffice\UI\ResourcePresenter;
 use Nette\Application\Attributes\Persistent;
 use Nette\Application\Attributes\Requires;
+use Nette\Application\Responses\TextResponse;
 use Nette\Application\UI\Control;
 use Nette\Bridges\ApplicationLatte\Template;
 use Nette\Utils\Arrays;
@@ -45,6 +47,40 @@ final class ListControl extends Control
 	public int $perPage = 0;
 
 	private ?ListBuilder $list = null;
+
+	/**
+	 * Export do CSV (ListBuilder::csv()): celý výsledek hledání a filtrů v aktuálním řazení,
+	 * bez stránkování. Odkaz nese stav seznamu (list-q, list-f…), takže exportuje, co člověk vidí.
+	 */
+	public function handleExport(): void
+	{
+		$list = $this->getList();
+
+		if (!$list->hasCsvExport()) {
+			$this->error('Seznam nemá export CSV.');
+		}
+
+		$collection = $this->filteredCollection();
+		[$sortKey, $direction] = $this->getSort();
+		$this->applySort($collection, $sortKey, $direction);
+		$columns = $list->getCsvColumns();
+		$rows = [];
+
+		foreach ($collection->toArray() as $entity) {
+			$rows[] = \array_map(static function (string $column) use ($entity): string {
+				$value = $entity->getValue($column);
+
+				return \is_bool($value) ? ($value ? '1' : '0') : (\is_scalar($value) ? (string) $value : '');
+			}, \array_keys($columns));
+		}
+
+		$presenter = $this->presenter();
+		$filename = $presenter->getDefinition()->getMeta()->getSlug() . '-' . (new \DateTimeImmutable())->format('Y-m-d') . '.csv';
+		$response = $presenter->getHttpResponse();
+		$response->setContentType('text/csv', 'utf-8');
+		$response->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
+		$presenter->sendResponse(new TextResponse(CsvFile::write(\array_values($columns), $rows)));
+	}
 
 	public function render(): void
 	{

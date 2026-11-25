@@ -71,6 +71,11 @@ final class Field
 	/** @var array<string, (\Closure(\Nette\Utils\Image): void)|null> adresář v userfiles → úprava obrázku */
 	private array $imageDirectories = [];
 
+	private ?int $counter = null;
+
+	/** @var array<string, string> jazyk ('' = pole bez jazyků) → text před polem */
+	private array $prefixes = [];
+
 	public function __construct(
 		public readonly string $type,
 		public readonly string $name,
@@ -359,6 +364,50 @@ final class Field
 	public function getEditorOptions(): array
 	{
 		return $this->editorOptions;
+	}
+
+	/**
+	 * Počítadlo znaků pod polem („42 / 70“), přes doporučenou délku zčervená — např. titulek
+	 * a popisek pro vyhledávače. Délku neomezuje, jen ukazuje.
+	 */
+	public function counter(int $recommended): self
+	{
+		if (!Arrays::contains([self::TYPE_TEXT, self::TYPE_TEXTAREA, self::TYPE_LOCALE_TEXT, self::TYPE_LOCALE_TEXTAREA], $this->type)) {
+			throw new \LogicException("Počítadlo znaků jde jen u textového pole, '{$this->name}' je {$this->type}.");
+		}
+
+		$this->counter = $recommended;
+
+		return $this;
+	}
+
+	public function getCounter(): ?int
+	{
+		return $this->counter;
+	}
+
+	/**
+	 * Pevný text před polem, který se neukládá — typicky začátek adresy („pse.cz/en/“). U jazykového
+	 * pole pole [jazyk => text], jazyk bez textu prefix nemá.
+	 * @param string|array<string, string> $prefix
+	 */
+	public function prefix(string|array $prefix): self
+	{
+		if (!Arrays::contains([self::TYPE_TEXT, self::TYPE_LOCALE_TEXT], $this->type)) {
+			throw new \LogicException("Text před polem jde jen u jednořádkového pole, '{$this->name}' je {$this->type}.");
+		}
+
+		$this->prefixes = \is_string($prefix) ? ['' => $prefix] : $prefix;
+
+		return $this;
+	}
+
+	/**
+	 * Text před polem pro jazyk (null = pole bez jazyků).
+	 */
+	public function getPrefix(?string $mutation = null): ?string
+	{
+		return $this->prefixes[$mutation ?? ''] ?? null;
 	}
 
 	public function isLocalized(): bool

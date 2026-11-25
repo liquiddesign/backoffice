@@ -6,6 +6,8 @@ namespace Backoffice\UI;
 
 use Backoffice\Media\FileStorage;
 use Backoffice\Media\ImageStorage;
+use Backoffice\Resource\Csv\CsvImporter;
+use Backoffice\Resource\Csv\CsvRowException;
 use Backoffice\Resource\Form\Field;
 use Backoffice\Resource\Form\FormFactory;
 use Backoffice\Resource\Form\RichTextEditor;
@@ -18,12 +20,14 @@ use Nette\Application\Attributes\Persistent;
 use Nette\Application\Attributes\Requires;
 use Nette\Application\UI\Form;
 use Nette\DI\Attributes\Inject;
+use Nette\Http\FileUpload;
+use Nette\Utils\Html;
 use Nette\Utils\Random;
 use Nette\Utils\Strings;
 use StORM\Entity;
 
 /**
- * Jeden presenter pro všechny deklarativní agendy: <prefix>/r/<agenda>[/edit|new][/<id>].
+ * Jeden presenter pro všechny deklarativní agendy: <prefix>/r/<agenda>[/edit|new|usage|import][/<id>].
  */
 final class ResourcePresenter extends BackofficePresenter
 {
@@ -482,9 +486,46 @@ final class ResourcePresenter extends BackofficePresenter
 	 */
 	public function defaultButtons(): array
 	{
-		return $this->isAllowedAction('new')
-			? [$this->button('Nový: ' . $this->getDefinition()->getMeta()->getItemTitle(), 'new', icon: 'file')]
-			: [];
+		$list = $this->getDefinition()->buildList();
+		$buttons = [];
+
+		if ($list->hasCsvExport() && !$this->hasListView()) {
+			// Odkaz z komponenty seznamu nese jeho stav (hledání, filtry, řazení).
+			$buttons[] = Html::el('a', ['class' => 'bo-btn bo-btn-ghost', 'href' => $this['list']->link('export!')])
+				->addText('Export CSV');
+		}
+
+		if ($list->hasCsvImport() && $this->isAllowedAction('import')) {
+			$buttons[] = $this->button('Import CSV', 'import', variant: 'outline');
+		}
+
+		if ($this->isAllowedAction('new')) {
+			$buttons[] = $this->button('Nový: ' . $this->getDefinition()->getMeta()->getItemTitle(), 'new', icon: 'file');
+		}
+
+		return $buttons;
+	}
+
+	public function actionImport(): void
+	{
+		if (!$this->getDefinition()->buildList()->hasCsvImport()) {
+			$this->error('Agenda nemá import CSV.');
+		}
+	}
+
+	public function renderImport(): void
+	{
+		$meta = $this->getDefinition()->getMeta();
+		$list = $this->getDefinition()->buildList();
+		$this->title = 'Import CSV';
+		$this->breadcrumbs = [[$meta->getTitle(), 'default'], ['Import CSV']];
+		$this->buttons = [$this->button('Zpět na seznam', 'default', variant: 'ghost')];
+		$this->template->csvColumns = $list->getCsvColumns();
+		$this->template->csvKey = $list->getCsvImportKey() ?? [];
+		$this->template->exportLink = $list->hasCsvExport() ? $this['list']->link('export!') : null;
+		$template = $this->getTemplate();
+		\assert($template instanceof \Nette\Bridges\ApplicationLatte\Template);
+		$template->setFile(__DIR__ . '/../Resource/templates/import.latte');
 	}
 
 	public function getDefinition(): ResourceDefinition
@@ -611,6 +652,65 @@ final class ResourcePresenter extends BackofficePresenter
 
 		$form->onError[] = function (): void {
 			$this->flashMessage('Formulář obsahuje chyby — jsou vyznačené u polí.', 'error');
+		};
+
+		return $form;
+	}
+
+	protected function createComponentImportForm(): Form
+	{
+		$form = new Form();
+		$form->addProtection('Platnost formuláře vypršela, odešlete ho prosím znovu.');
+		$form->addUpload('file', 'Soubor CSV')
+			->setRequired('Vyberte soubor CSV.')
+			->setHtmlAttribute('accept', '.csv,text/csv,text/plain');
+		$form->addSubmit('import', 'Importovat');
+
+		$form->onSuccess[] = function (Form $form, array $values): void {
+			$definition = $this->getDefinition();
+			$meta = $definition->getMeta();
+			$upload = $values['file'];
+			\assert($upload instanceof FileUpload);
+
+			if (!$upload->isOk()) {
+				$control = $form->getComponent('file');
+				\assert($control instanceof \Nette\Forms\Controls\UploadControl);
+				$control->addError('Soubor se nenahrál, zkuste to znovu.');
+
+				return;
+			}
+
+			try {
+				$result = (new CsvImporter($definition))->import((string) $upload->getContents());
+			} catch (CsvRowException $e) {
+				$form->addError('Nic se neuložilo. ' . $e->getMessage());
+
+				return;
+			} catch (\PDOException $e) {
+				$form->addError('Nic se neuložilo — databáze řádek odmítla (' . $e->getMessage() . ').');
+
+				return;
+			}
+
+			foreach ($result['created'] as $id) {
+				$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_NEW, $id);
+			}
+
+			foreach ($result['updated'] as $id) {
+				$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_DETAIL, $id);
+			}
+
+			if ($result['created'] !== [] || $result['updated'] !== []) {
+				$definition->changed();
+			}
+
+			$this->flashMessage(\sprintf(
+				'Import hotový: %d nových, %d upravených, %d beze změny.',
+				\count($result['created']),
+				\count($result['updated']),
+				$result['unchanged'],
+			), 'success');
+			$this->redirect('default');
 		};
 
 		return $form;

@@ -417,6 +417,12 @@ textarea.bo-input { height: auto; min-height: 90px; padding: 8px 10px; }
 .bo-input.is-invalid { border-color: var(--adm-danger); }
 .bo-input.is-invalid:focus { outline-color: var(--adm-danger); }
 .bo-input-date { max-width: 220px; }
+/* Pevný text před polem (Field::prefix) a počítadlo znaků (Field::counter) */
+.bo-input-group { display: flex; align-items: stretch; width: 100%; }
+.bo-input-prefix { display: flex; align-items: center; padding: 0 10px; border: 1px solid #cfd5de; border-right: 0; border-radius: var(--adm-radius-sm) 0 0 var(--adm-radius-sm); background: #f4f6f9; color: var(--adm-muted); font-size: 13px; white-space: nowrap; max-width: 45%; overflow: hidden; text-overflow: ellipsis; }
+.bo-input-group .bo-input { border-radius: 0 var(--adm-radius-sm) var(--adm-radius-sm) 0; min-width: 0; flex: 1; }
+.bo-counter { align-self: flex-end; color: var(--adm-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.bo-counter.is-over { color: var(--adm-danger); font-weight: 600; }
 .bo-locale-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 20px; }
 .bo-locale-item { display: flex; flex-direction: column; gap: 4px; }
 .bo-locale-label { display: flex; }

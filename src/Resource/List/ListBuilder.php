@@ -33,6 +33,12 @@ final class ListBuilder
 
 	private ?string $searchPlaceholder = null;
 
+	/** @var array<string, string> sloupec → záhlaví v CSV */
+	private array $csvColumns = [];
+
+	/** @var list<string>|null sloupce, podle kterých import pozná existující záznam; null = bez importu */
+	private ?array $csvImportKey = null;
+
 	/**
 	 * @param string|null $mutation u jazykového sloupce pevný jazyk (dva sloupce „Text CS“ a „Text EN“)
 	 */
@@ -177,6 +183,58 @@ final class ListBuilder
 		$this->bulkActions[] = new BulkAction($column, $value, $label);
 
 		return $this;
+	}
+
+	/**
+	 * Export do CSV (tlačítko nad seznamem, vyexportuje výsledek hledání a filtrů) a s $importKey
+	 * i import: řádky se stejnými hodnotami klíče se upraví, ostatní založí. Sloupce jsou sloupce
+	 * entity bez jazyků; v souboru se poznají podle záhlaví i podle jména sloupce. Řádek před
+	 * uložením projde ResourceDefinition::importRow() (úprava, kontrola).
+	 * @param array<string, string> $columns sloupec → záhlaví („fromUrl“ => „Z URL“)
+	 * @param list<string>|null $importKey
+	 */
+	public function csv(array $columns, ?array $importKey = null): self
+	{
+		if ($columns === []) {
+			throw new \InvalidArgumentException('CSV potřebuje aspoň jeden sloupec.');
+		}
+
+		foreach ($importKey ?? [] as $key) {
+			if (!isset($columns[$key])) {
+				throw new \InvalidArgumentException("Klíč importu '$key' není mezi sloupci CSV.");
+			}
+		}
+
+		$this->csvColumns = $columns;
+		$this->csvImportKey = $importKey === [] ? null : $importKey;
+
+		return $this;
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	public function getCsvColumns(): array
+	{
+		return $this->csvColumns;
+	}
+
+	/**
+	 * @return list<string>|null
+	 */
+	public function getCsvImportKey(): ?array
+	{
+		return $this->csvImportKey;
+	}
+
+	public function hasCsvExport(): bool
+	{
+		return $this->csvColumns !== [];
+	}
+
+	public function hasCsvImport(): bool
+	{
+		return $this->csvImportKey !== null;
 	}
 
 	public function perPage(int $perPage): self

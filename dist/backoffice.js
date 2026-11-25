@@ -183,6 +183,24 @@
 		}, true);
 	}
 
+	// Počítadlo znaků (Field::counter): „42 / 70“ pod polem, přes doporučenou délku červeně.
+	document.querySelectorAll('[data-bo-counter]').forEach(function (input) {
+		var limit = parseInt(input.getAttribute('data-bo-counter'), 10);
+		var counter = document.createElement('span');
+		counter.className = 'bo-counter';
+		counter.setAttribute('aria-live', 'polite');
+		var anchor = input.parentNode.classList.contains('bo-input-group') ? input.parentNode : input;
+		anchor.insertAdjacentElement('afterend', counter);
+		var update = function () {
+			var length = Array.from(input.value).length;
+			counter.textContent = length + ' / ' + limit;
+			counter.classList.toggle('is-over', length > limit);
+			counter.title = length > limit ? 'Delší než doporučených ' + limit + ' znaků — vyhledávač text zkrátí.' : '';
+		};
+		input.addEventListener('input', update);
+		update();
+	});
+
 	// Formulář agendy: neuložené změny, Ctrl S, varování při odchodu.
 	var form = document.querySelector('[data-bo-form]');
 

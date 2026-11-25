@@ -16,10 +16,8 @@
 							<label n:name="$mutation" class="bo-locale-label"><span class="bo-pill">{$mutation|upper}</span></label>
 							{if $field->isRichText()}
 								{include richText, field: $field, mutation: $mutation, control: $formContainer[$mutation]}
-							{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_LOCALE_TEXTAREA}
-								<textarea n:name="$mutation" n:class="bo-input, $formContainer[$mutation]->hasErrors() ? is-invalid"></textarea>
 							{else}
-								<input n:name="$mutation" n:class="bo-input, $formContainer[$mutation]->hasErrors() ? is-invalid">
+								{include textInput, field: $field, control: $formContainer[$mutation], mutation: $mutation}
 							{/if}
 							<span class="bo-field-error" n:ifcontent>{inputError $mutation}</span>
 						</div>
@@ -86,8 +84,8 @@
 			<label n:name="$field->name">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
 			{if $field->isRichText()}
 				{include richText, field: $field, mutation: null, control: $form[$field->name]}
-			{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_TEXTAREA}
-				<textarea n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></textarea>
+			{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_TEXTAREA || $field->type === Backoffice\Resource\Form\Field::TYPE_TEXT}
+				{include textInput, field: $field, control: $form[$field->name], mutation: null}
 			{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_SELECT}
 				<select n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></select>
 			{else}
@@ -103,4 +101,16 @@
 
 {define richText, Backoffice\Resource\Form\Field $field, ?string $mutation, Nette\Forms\Controls\BaseControl $control}
 	{$control->getControlPart()->addAttributes(Backoffice\Resource\Form\FormFactory::richTextAttributes($field, $mutation, $richText ?? null, $control->hasErrors()))}
+{/define}
+
+{* Textové pole (i jazykové): třída, počítadlo znaků (Field::counter) a pevný text před polem (Field::prefix). *}
+{define textInput, Backoffice\Resource\Form\Field $field, Nette\Forms\Controls\BaseControl $control, ?string $mutation}
+	{var $prefix = $field->getPrefix($mutation)}
+	{var $input = $control->getControl()->addClass('bo-input')->addClass($control->hasErrors() ? 'is-invalid' : null)}
+	{if $field->getCounter() !== null}{do $input->setAttribute('data-bo-counter', $field->getCounter())}{/if}
+	{if $prefix !== null}
+		<div class="bo-input-group"><span class="bo-input-prefix">{$prefix}</span>{$input}</div>
+	{else}
+		{$input}
+	{/if}
 {/define}

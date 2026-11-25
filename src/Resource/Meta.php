@@ -178,7 +178,8 @@ final class Meta
 	public function permissionLink(string $action): string
 	{
 		$legacyAction = match ($action) {
-			'edit', 'usage' => 'detail',
+			// Import CSV zapisuje záznamy — chce stejné právo jako jejich úprava.
+			'edit', 'usage', 'import' => 'detail',
 			default => $action,
 		};
 

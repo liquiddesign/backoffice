@@ -147,6 +147,19 @@ abstract class ResourceDefinition
 	}
 
 	/**
+	 * Řádek importu CSV (ListBuilder::csv() s klíčem) před uložením: sloupec → text ze souboru,
+	 * jen sloupce, které soubor má. Vrátí data k uložení (úprava, převod typů, výchozí hodnoty);
+	 * řádek, který nejde uložit, ohlásí CsvRowException s důvodem — import se pak celý vrátí.
+	 * @param array<string, string> $row
+	 * @return array<string, mixed>
+	 * @throws \Backoffice\Resource\Csv\CsvRowException
+	 */
+	public function importRow(array $row): array
+	{
+		return $row;
+	}
+
+	/**
 	 * Zavolá se po každé změně dat agendy (uložení, úprava v seznamu, hromadná akce, smazání, vrácení).
 	 * Např. smazání cache, ze které čte web.
 	 */
