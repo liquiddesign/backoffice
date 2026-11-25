@@ -242,6 +242,42 @@ uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého admin
   — pole s hledáním: píše se část názvu, nabídne 20 položek (signál `lookup!`, JSON), uloží se klíč.
   Neexistující klíč = chyba u pole.
 
+### Vnořený seznam (`rows`)
+
+Podřízené záznamy přímo ve formuláři — konzultanti ve skupině, skupiny konzultanta (vazba N:N
+s vlastními hodnotami v propojovací tabulce):
+
+```php
+$form->rows('members', 'Konzultanti')
+	->rowInteger('priority', 'Pořadí')
+	->rowText('isins', 'ISIN emisí', 'oddělené čárkou')
+	->rowCheckbox('remove', 'Odebrat')
+	->rowsSortableBy('priority')          // přetažení za úchyt / šipky, přečísluje pořadí
+	->rowsEmptyText('Ve skupině zatím nikdo není.');
+
+public function formRows(string $field, ?Entity $entity): array   // list<FormRow>
+{
+	return [new FormRow($id, 'Jméno', ['priority' => 3, 'isins' => 'CZ…'], 'pozice', [$thumbDir, $file], ':Backoffice:Resource:edit', ['resource' => 'consultants', 'id' => $id])];
+}
+
+public function afterSave(Entity $entity, array $values, bool $created): void
+{
+	// $values['members'][$id]['priority'] … uložit do propojovací tabulky
+}
+```
+
+Řádek = `FormRow` (klíč, popisek, výchozí hodnoty polí, poznámka pod popiskem, náhled
+`[adresář, soubor]`, odkaz). Hodnoty přijdou v `$values[pole][klíč][pole řádku]`, do sloupců záznamu
+nejdou; uloží je `afterSave()` (volá se po uložení nového i upraveného záznamu, záznam už má ID).
+Chyba u pole řádku: `$form['members'][$id]['isins']->addError()`. Přetažení jen přečísluje pole
+a označí formulář za změněný — uloží se s ním.
+
+### Dvě agendy z jednoho starého presenteru
+
+`replaces()` přebírá oprávnění, položku menu i staré adresy. Druhá agenda téhož presenteru vezme jen
+oprávnění přes `$meta->permissionsFrom(':Web:Admin:Consultant')`. Tlačítko mezi nimi v hlavičce
+seznamu: `$meta->related('consultant-groups', 'Skupiny')` (ukáže se jen s právem na cílovou agendu).
+
 ### Háčky agendy
 
 | Metoda | K čemu |
@@ -252,6 +288,7 @@ uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého admin
 | `lockReason(entity)` | záznam jen ke čtení (z importu): důvod se ukáže nahoře, formulář je zamčený, nejde smazat, hromadné akce ho přeskočí |
 | `deleteBlockReason(entity)` | záznam jde upravit, ale ne smazat (systémový): koš je šedý s důvodem v popisku, hromadné mazání ho přeskočí |
 | `importRow(row)` | řádek importu CSV před uložením (sloupec → text): vrátí data k uložení, nepoužitelný řádek ohlásí `CsvRowException` s důvodem; smí doplnit sloupec klíče, který soubor nemá |
+| `formRows(field, entity)` / `afterSave(entity, values, created)` | řádky vnořeného seznamu (viz výše) / uložení dat mimo sloupce záznamu po jeho uložení |
 | `formNotices(entity)` | upozornění nad formulářem záznamu: `[[FormNotice::WARN, 'text'], [FormNotice::INFO, 'text']]` (žlutě / modře) — např. kde se záznam na webu ukáže, kontrola odkazů |
 
 ## Stránka nastavení (`Meta::settings()`)

@@ -37,3 +37,11 @@ test('stránka nastavení: bez zakládání, mazání a stránky záznamu, repoz
 	Assert::false((new Meta())->isSettings());
 	Assert::same(':Backoffice:Resource:default', $meta->permissionLink('default'));
 });
+
+test('práva ze starého presenteru bez převzetí menu', function (): void {
+	$meta = (new Meta())->slug('consultant-groups')->permissionsFrom('Web:Admin:Consultant')->related('consultants', 'Konzultanti');
+
+	Assert::null($meta->getReplaces());
+	Assert::same(':Web:Admin:Consultant:detail', $meta->permissionLink('edit'));
+	Assert::same(['consultants' => 'Konzultanti'], $meta->getRelated());
+});

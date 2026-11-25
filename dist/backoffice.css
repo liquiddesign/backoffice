@@ -670,3 +670,14 @@ button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
 	.bo-rowlist-edit { padding-left: 14px; }
 	.bo-preview-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Vnořený seznam ve formuláři (FormBuilder::rows) */
+.bo-rows-title { display: block; font-weight: 600; font-size: 13.5px; margin-bottom: 6px; }
+.bo-rows-table th, .bo-rows-table td { vertical-align: middle; }
+.bo-rows-table tr.is-dragging td { opacity: .45; }
+.bo-rows-label { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+.bo-rows-label small { display: block; font-size: 12px; }
+.bo-rows-label a { color: var(--adm-ink); font-weight: 500; text-decoration: none; }
+.bo-rows-label a:hover { color: var(--adm-primary); text-decoration: underline; }
+.bo-rows-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; background: var(--adm-line, #eee); flex: none; }
+.bo-rows-table input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--adm-primary); }

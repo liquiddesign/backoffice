@@ -27,6 +27,11 @@ final class Field
 	public const TYPE_RELATION = 'relation';
 	public const TYPE_RICH_TEXT = 'richText';
 	public const TYPE_LOCALE_RICH_TEXT = 'localeRichText';
+	public const TYPE_ROWS = 'rows';
+
+	public const ROW_CHECKBOX = 'checkbox';
+	public const ROW_INTEGER = 'integer';
+	public const ROW_TEXT = 'text';
 
 	private bool $required = false;
 
@@ -77,6 +82,13 @@ final class Field
 
 	/** @var array<string, string> jazyk ('' = pole bez jazyků) → text před polem */
 	private array $prefixes = [];
+
+	/** @var array<string, array{type: string, label: string, placeholder: string|null}> pole řádku vnořeného seznamu */
+	private array $rowColumns = [];
+
+	private ?string $rowSortColumn = null;
+
+	private string $rowsEmptyText = 'Zatím tu nic není.';
 
 	public function __construct(
 		public readonly string $type,
@@ -432,6 +444,73 @@ final class Field
 		return $this->prefixes[$mutation ?? ''] ?? null;
 	}
 
+	/**
+	 * Vnořený seznam (FormBuilder::rows()): zaškrtávátko v každém řádku.
+	 */
+	public function rowCheckbox(string $name, string $label): self
+	{
+		return $this->addRowColumn($name, self::ROW_CHECKBOX, $label);
+	}
+
+	/**
+	 * Vnořený seznam: celé číslo v každém řádku (pořadí…).
+	 */
+	public function rowInteger(string $name, string $label): self
+	{
+		return $this->addRowColumn($name, self::ROW_INTEGER, $label);
+	}
+
+	/**
+	 * Vnořený seznam: text v každém řádku.
+	 */
+	public function rowText(string $name, string $label, ?string $placeholder = null): self
+	{
+		return $this->addRowColumn($name, self::ROW_TEXT, $label, $placeholder);
+	}
+
+	/**
+	 * Vnořený seznam: řádky jdou přetáhnout za úchyt; číselné pole $name se přečísluje podle nového
+	 * pořadí (hodnotami, které řádky už měly) a uloží se s formulářem.
+	 */
+	public function rowsSortableBy(string $name): self
+	{
+		if (($this->rowColumns[$name]['type'] ?? null) !== self::ROW_INTEGER) {
+			throw new \LogicException("Řazení vnořeného seznamu '{$this->name}' potřebuje číselné pole řádku '$name' (rowInteger).");
+		}
+
+		$this->rowSortColumn = $name;
+
+		return $this;
+	}
+
+	/**
+	 * Text místo tabulky, když agenda žádné řádky nevrátí.
+	 */
+	public function rowsEmptyText(string $text): self
+	{
+		$this->rowsEmptyText = $text;
+
+		return $this;
+	}
+
+	/**
+	 * @return array<string, array{type: string, label: string, placeholder: string|null}>
+	 */
+	public function getRowColumns(): array
+	{
+		return $this->rowColumns;
+	}
+
+	public function getRowSortColumn(): ?string
+	{
+		return $this->rowSortColumn;
+	}
+
+	public function getRowsEmptyText(): string
+	{
+		return $this->rowsEmptyText;
+	}
+
 	public function isLocalized(): bool
 	{
 		return Arrays::contains([self::TYPE_LOCALE_TEXT, self::TYPE_LOCALE_TEXTAREA, self::TYPE_LOCALE_RICH_TEXT], $this->type);
@@ -440,5 +519,16 @@ final class Field
 	public function isRichText(): bool
 	{
 		return $this->type === self::TYPE_RICH_TEXT || $this->type === self::TYPE_LOCALE_RICH_TEXT;
+	}
+
+	private function addRowColumn(string $name, string $type, string $label, ?string $placeholder = null): self
+	{
+		if ($this->type !== self::TYPE_ROWS) {
+			throw new \LogicException("Pole řádku jde přidat jen k vnořenému seznamu (FormBuilder::rows()), ne k '{$this->name}'.");
+		}
+
+		$this->rowColumns[$name] = ['type' => $type, 'label' => $label, 'placeholder' => $placeholder];
+
+		return $this;
 	}
 }

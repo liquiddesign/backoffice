@@ -24,7 +24,7 @@ use Nette\Http\FileUpload;
 use Nette\Utils\Html;
 use Nette\Utils\Random;
 use Nette\Utils\Strings;
-use StORM\Connection;
+use StORM\DIConnection;
 use StORM\Entity;
 
 /**
@@ -52,7 +52,7 @@ final class ResourcePresenter extends BackofficePresenter
 
 	/** Jazyky webu (i pro stránku nastavení, která nemá repozitář). */
 	#[Inject]
-	public Connection $connection;
+	public DIConnection $connection;
 
 	#[Inject]
 	public ImageStorage $images;
@@ -68,6 +68,9 @@ final class ResourcePresenter extends BackofficePresenter
 	private ?Entity $entity = null;
 
 	private ?bool $hasListView = null;
+
+	/** @var array<string, list<\Backoffice\Resource\Form\FormRow>> */
+	private array $formRows = [];
 
 	public function checkRequirements(mixed $element): void
 	{
@@ -511,6 +514,16 @@ final class ResourcePresenter extends BackofficePresenter
 		$list = $this->getDefinition()->buildList();
 		$buttons = [];
 
+		foreach ($this->getDefinition()->getMeta()->getRelated() as $slug => $label) {
+			$related = $this->registry->get($slug);
+
+			if ($related === null || !$this->shell->access->isAllowed($related->getMeta()->permissionLink('default'))) {
+				continue;
+			}
+
+			$buttons[] = $this->button($label, 'default', ['resource' => $slug], variant: 'ghost');
+		}
+
 		if ($list->hasCsvExport() && !$this->hasListView()) {
 			// Odkaz z komponenty seznamu nese jeho stav (hledání, filtry, řazení).
 			$buttons[] = Html::el('a', ['class' => 'bo-btn bo-btn-ghost', 'href' => $this['list']->link('export!')])
@@ -561,7 +574,7 @@ final class ResourcePresenter extends BackofficePresenter
 	 */
 	public function mutations(): array
 	{
-		return \array_keys($this->connection->getAvailableMutations());
+		return \array_map('strval', \array_keys($this->connection->getAvailableMutations()));
 	}
 
 	/**
@@ -574,6 +587,7 @@ final class ResourcePresenter extends BackofficePresenter
 			'imageUrls' => $this->imageUrls(),
 			'fileInfo' => $this->fileInfo(),
 			'relationLabels' => $this->relationLabels(),
+			'formRows' => $this->allFormRows(),
 			'entity' => $this->entity,
 			'richText' => $this->richText,
 		];
@@ -608,7 +622,7 @@ final class ResourcePresenter extends BackofficePresenter
 	protected function createComponentForm(): Form
 	{
 		$definition = $this->getDefinition();
-		$form = $this->formFactory->create($definition->buildForm(), $this->mutations());
+		$form = $this->formFactory->create($definition->buildForm(), $this->mutations(), $this->formRows(...));
 
 		$form->onValidate[] = function (Form $form) use ($definition): void {
 			$this->validateUnique($form, $definition);
@@ -648,6 +662,7 @@ final class ResourcePresenter extends BackofficePresenter
 			}
 
 			$this->saveImages($form, $definition, $entity);
+			$definition->afterSave($entity, $values, $type === ChangeLogger::TYPE_NEW);
 
 			foreach ($obsoleteFiles as [$directory, $filename]) {
 				$this->files->delete($directory, $filename);
@@ -772,6 +787,7 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->template->imageUrls = $this->imageUrls();
 		$this->template->fileInfo = $this->fileInfo();
 		$this->template->relationLabels = $this->relationLabels();
+		$this->template->formRows = $this->allFormRows();
 		$this->template->richText = $this->richText;
 		$this->template->settings = $this->getDefinition()->getMeta()->isSettings();
 
@@ -803,6 +819,33 @@ final class ResourcePresenter extends BackofficePresenter
 		}
 
 		$this->template->setFile(__DIR__ . '/../Resource/templates/form.latte');
+	}
+
+	/**
+	 * Řádky vnořeného seznamu z agendy, jednou za požadavek (formulář i šablona je chtějí stejné).
+	 * @return list<\Backoffice\Resource\Form\FormRow>
+	 */
+	private function formRows(string $field): array
+	{
+		return $this->formRows[$field] ??= $this->getDefinition()->formRows($field, $this->entity);
+	}
+
+	/**
+	 * @return array<string, list<\Backoffice\Resource\Form\FormRow>>
+	 */
+	private function allFormRows(): array
+	{
+		$rows = [];
+
+		foreach ($this->getDefinition()->buildForm()->getFields() as $name => $field) {
+			if ($field->type !== Field::TYPE_ROWS) {
+				continue;
+			}
+
+			$rows[$name] = $this->formRows($name);
+		}
+
+		return $rows;
 	}
 
 	/**

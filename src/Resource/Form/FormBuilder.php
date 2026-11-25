@@ -114,6 +114,17 @@ final class FormBuilder
 	}
 
 	/**
+	 * Vnořený seznam podřízených záznamů (konzultanti ve skupině, skupiny konzultanta): řádky dodá
+	 * ResourceDefinition::formRows(), pole řádků ->rowCheckbox() / ->rowInteger() / ->rowText(),
+	 * přetahování ->rowsSortableBy(). Hodnoty přijdou jako $values[jméno][klíč řádku][pole]
+	 * a uloží je ResourceDefinition::afterSave() — do sloupců záznamu nejdou.
+	 */
+	public function rows(string $name, string $label): Field
+	{
+		return $this->add(Field::TYPE_ROWS, $name, $label);
+	}
+
+	/**
 	 * @return array<string, \Backoffice\Resource\Form\Field>
 	 */
 	public function getFields(): array

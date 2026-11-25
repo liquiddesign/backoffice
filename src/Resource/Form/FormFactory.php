@@ -27,13 +27,20 @@ final class FormFactory
 
 	/**
 	 * @param list<string> $mutations jazyky v pořadí, první je hlavní
+	 * @param (\Closure(string): list<\Backoffice\Resource\Form\FormRow>)|null $rows řádky vnořeného seznamu podle jména pole
 	 */
-	public function create(FormBuilder $builder, array $mutations): Form
+	public function create(FormBuilder $builder, array $mutations, ?\Closure $rows = null): Form
 	{
 		$form = new Form();
 		$form->addProtection('Platnost formuláře vypršela, odešlete ho prosím znovu.');
 
 		foreach ($builder->getFields() as $field) {
+			if ($field->type === Field::TYPE_ROWS) {
+				$this->addRows($form, $field, $rows !== null ? $rows($field->name) : []);
+
+				continue;
+			}
+
 			if ($field->isLocalized()) {
 				$this->addLocalized($form, $field, $mutations);
 
@@ -81,7 +88,8 @@ final class FormFactory
 		$defaults = [];
 
 		foreach ($builder->getFields() as $name => $field) {
-			if (self::isUpload($field)) {
+			// Vnořený seznam má výchozí hodnoty z řádků (FormRow::$values), ne ze sloupce.
+			if (self::isUpload($field) || $field->type === Field::TYPE_ROWS) {
 				continue;
 			}
 
@@ -113,7 +121,7 @@ final class FormFactory
 
 		foreach ($builder->getFields() as $name => $field) {
 			// Obrázky ukládá presenter až po uložení záznamu (jméno souboru = ID záznamu).
-			if (!\array_key_exists($name, $values) || self::isUpload($field)) {
+			if (!\array_key_exists($name, $values) || self::isUpload($field) || $field->type === Field::TYPE_ROWS) {
 				continue;
 			}
 
@@ -160,6 +168,37 @@ final class FormFactory
 			'data-bo-richtext' => Json::encode((object) $config),
 			'data-bo-richtext-scripts' => Json::encode($editor?->scripts() ?? []),
 		];
+	}
+
+	/**
+	 * Vnořený seznam: kontejner pole → kontejner řádku (klíč) → pole řádku, s výchozími hodnotami řádku.
+	 * @param list<\Backoffice\Resource\Form\FormRow> $rows
+	 */
+	private function addRows(Form $form, Field $field, array $rows): void
+	{
+		$container = $form->addContainer($field->name);
+
+		foreach ($rows as $row) {
+			$rowContainer = $container->addContainer($row->key);
+
+			foreach ($field->getRowColumns() as $name => $column) {
+				$control = match ($column['type']) {
+					Field::ROW_CHECKBOX => $rowContainer->addCheckbox($name, $column['label']),
+					Field::ROW_INTEGER => $rowContainer->addInteger($name, $column['label']),
+					default => $rowContainer->addText($name, $column['label'])->setNullable(),
+				};
+
+				if ($column['type'] === Field::ROW_INTEGER) {
+					$control->setRequired('Vyplňte ' . Strings::lower($column['label']) . ' u „' . $row->label . '“.');
+				}
+
+				if (!\array_key_exists($name, $row->values)) {
+					continue;
+				}
+
+				$control->setDefaultValue($column['type'] === Field::ROW_CHECKBOX ? (bool) $row->values[$name] : $row->values[$name]);
+			}
+		}
 	}
 
 	/**

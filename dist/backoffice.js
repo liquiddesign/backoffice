@@ -491,6 +491,96 @@
 		});
 	});
 
+	// Vnořený seznam ve formuláři (FormBuilder::rows()->rowsSortableBy()): přetažení za úchyt nebo šipky
+	// na úchytu přeskládají řádky a přečíslují pole pořadí hodnotami, které řádky už měly (při shodě
+	// od nejmenší po jedné). Uloží se s formulářem; událost input ho označí za změněný.
+	document.querySelectorAll('[data-bo-rows-sortable]').forEach(function (body) {
+		var rows = function () {
+			return Array.prototype.slice.call(body.querySelectorAll('tr[data-bo-row]'));
+		};
+
+		var original = rows().map(function (row) {
+			var input = row.querySelector('[data-bo-rows-priority]');
+
+			return input ? parseInt(input.value, 10) || 0 : 0;
+		}).sort(function (a, b) { return a - b; });
+
+		var unique = original.every(function (value, index) { return index === 0 || value !== original[index - 1]; });
+
+		var renumber = function () {
+			rows().forEach(function (row, index) {
+				var input = row.querySelector('[data-bo-rows-priority]');
+				var value = String(unique ? original[index] : original[0] + index);
+
+				if (input && input.value !== value) {
+					input.value = value;
+					input.dispatchEvent(new Event('input', { bubbles: true }));
+				}
+			});
+		};
+
+		var dragged = null;
+
+		body.addEventListener('pointerdown', function (event) {
+			var grip = event.target.closest('[data-bo-grip]');
+
+			if (grip) {
+				grip.closest('tr').draggable = true;
+			}
+		});
+
+		body.addEventListener('dragstart', function (event) {
+			dragged = event.target.closest('tr');
+
+			if (dragged) {
+				dragged.classList.add('is-dragging');
+				event.dataTransfer.effectAllowed = 'move';
+				event.dataTransfer.setData('text/plain', '');
+			}
+		});
+
+		body.addEventListener('dragover', function (event) {
+			if (!dragged) {
+				return;
+			}
+
+			event.preventDefault();
+			var target = event.target.closest('tr[data-bo-row]');
+
+			if (target && target !== dragged) {
+				var rect = target.getBoundingClientRect();
+				body.insertBefore(dragged, event.clientY > rect.top + rect.height / 2 ? target.nextSibling : target);
+			}
+		});
+
+		body.addEventListener('dragend', function () {
+			if (dragged) {
+				dragged.classList.remove('is-dragging');
+				dragged.draggable = false;
+				dragged = null;
+				renumber();
+			}
+		});
+
+		body.addEventListener('keydown', function (event) {
+			var grip = event.target.closest('[data-bo-grip]');
+
+			if (!grip || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) {
+				return;
+			}
+
+			event.preventDefault();
+			var row = grip.closest('tr');
+			var sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+
+			if (sibling && sibling.matches('tr[data-bo-row]')) {
+				body.insertBefore(row, event.key === 'ArrowUp' ? sibling : sibling.nextSibling);
+				grip.focus();
+				renumber();
+			}
+		});
+	});
+
 	// Obrázek ve formuláři: náhled vybraného souboru, zvýraznění při přetahování.
 	document.querySelectorAll('[data-bo-image], [data-bo-file]').forEach(function (box) {
 		var input = box.querySelector('input[type=file]');

@@ -153,6 +153,27 @@ abstract class ResourceDefinition
 	}
 
 	/**
+	 * Řádky vnořeného seznamu (FormBuilder::rows()) pro upravovaný záznam; $entity = null u nového.
+	 * @return list<\Backoffice\Resource\Form\FormRow>
+	 */
+	public function formRows(string $field, ?Entity $entity): array
+	{
+		unset($field, $entity);
+
+		return [];
+	}
+
+	/**
+	 * Po uložení záznamu (nového i upraveného) — pro data mimo jeho sloupce, typicky vnořený
+	 * seznam ($values[pole][klíč řádku][pole řádku]) v jiné tabulce. Záznam už má ID.
+	 * @param array<string, mixed> $values všechny hodnoty formuláře
+	 */
+	public function afterSave(Entity $entity, array $values, bool $created): void
+	{
+		unset($entity, $values, $created);
+	}
+
+	/**
 	 * Řádek importu CSV (ListBuilder::csv() s klíčem) před uložením: sloupec → text ze souboru,
 	 * jen sloupce, které soubor má. Vrátí data k uložení (úprava, převod typů, výchozí hodnoty);
 	 * řádek, který nejde uložit, ohlásí CsvRowException s důvodem — import se pak celý vrátí.

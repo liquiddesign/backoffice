@@ -25,6 +25,11 @@ final class Meta
 
 	private ?string $legacyIdParameter = null;
 
+	private ?string $permissionsFrom = null;
+
+	/** @var array<string, string> slug související agendy → popisek tlačítka */
+	private array $related = [];
+
 	private ?string $icon = null;
 
 	private bool $create = true;
@@ -84,6 +89,35 @@ final class Meta
 		$this->legacyIdParameter = $idParameter;
 
 		return $this;
+	}
+
+	/**
+	 * Oprávnění podle starého presenteru, aniž by agenda přebírala jeho položku menu a adresy —
+	 * pro druhou agendu z jednoho starého presenteru (Skupiny vedle Konzultantů).
+	 */
+	public function permissionsFrom(string $presenter): self
+	{
+		$this->permissionsFrom = ':' . Strings::trim($presenter, ':');
+
+		return $this;
+	}
+
+	/**
+	 * Tlačítko v hlavičce seznamu na související agendu (Konzultanti ↔ Skupiny konzultantů).
+	 */
+	public function related(string $slug, string $label): self
+	{
+		$this->related[$slug] = $label;
+
+		return $this;
+	}
+
+	/**
+	 * @return array<string, string> slug → popisek
+	 */
+	public function getRelated(): array
+	{
+		return $this->related;
 	}
 
 	public function icon(string $icon): self
@@ -194,8 +228,8 @@ final class Meta
 	}
 
 	/**
-	 * Odkaz, podle kterého se ptáme na oprávnění. S `replaces` je to starý presenter, takže platí
-	 * stávající role; bez něj nový presenter s parametrem agendy.
+	 * Odkaz, podle kterého se ptáme na oprávnění. S `replaces` (nebo `permissionsFrom`) je to starý
+	 * presenter, takže platí stávající role; bez něj nový presenter s parametrem agendy.
 	 */
 	public function permissionLink(string $action): string
 	{
@@ -205,8 +239,10 @@ final class Meta
 			default => $action,
 		};
 
-		return $this->replaces !== null
-			? $this->replaces . ':' . $legacyAction
+		$legacy = $this->replaces ?? $this->permissionsFrom;
+
+		return $legacy !== null
+			? $legacy . ':' . $legacyAction
 			: ':Backoffice:Resource:' . $action;
 	}
 }

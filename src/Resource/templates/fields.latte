@@ -74,6 +74,8 @@
 			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
 			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
 		</div>
+	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_ROWS}
+		{include rows, field: $field, rows: ($formRows ?? [])[$field->name] ?? []}
 	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_CHECKBOX}
 		<div class="bo-field">
 			<label class="bo-check"><input n:name="$field->name"> {$field->label}</label>
@@ -114,4 +116,62 @@
 	{else}
 		{$input}
 	{/if}
+{/define}
+
+{* Vnořený seznam (FormBuilder::rows()): tabulka řádků z ResourceDefinition::formRows(), pole řádků
+   v kontejneru pole → klíč řádku. S rowsSortableBy() řádky jdou přetáhnout za úchyt (nebo šipkami). *}
+{define rows, Backoffice\Resource\Form\Field $field, array $rows}
+	{var $sort = $field->getRowSortColumn()}
+	<div class="bo-field bo-rows">
+		<span class="bo-rows-title">{$field->label}</span>
+		{if $rows}
+			<div class="bo-table-wrap">
+				<table class="bo-table bo-rows-table">
+					<thead>
+						<tr>
+							<th n:if="$sort" class="bo-th-grip"><span class="bo-sr-only">Přesunout</span></th>
+							<th>Název</th>
+							<th n:foreach="$field->getRowColumns() as $column" n:class="$column['type'] !== text ? bo-th-narrow">{$column['label']}</th>
+						</tr>
+					</thead>
+					<tbody n:attr="data-bo-rows-sortable: $sort !== null">
+						{formContainer $field->name}
+						{foreach $rows as $row}
+							{formContainer $row->key}
+							<tr data-bo-row>
+								<td n:if="$sort" class="bo-td-grip"><button type="button" class="bo-grip" data-bo-grip aria-label="Přesunout {$row->label} (šipky nahoru a dolů)" title="Přetažením změníte pořadí">{Backoffice\Shell\Icons::get('grip', 16)}</button></td>
+								<td>
+									<div class="bo-rows-label">
+										{var $thumb = $row->image !== null ? $presenter->imageUrl($row->image[0], $row->image[1]) : null}
+										<img n:if="$thumb" src="{$thumb}" alt="" class="bo-rows-thumb" loading="lazy">
+										<span>
+											{if $row->link}<a href="{plink $row->link, ...$row->linkArgs}">{$row->label}</a>{else}{$row->label}{/if}
+											<small n:if="$row->note" class="bo-muted">{$row->note}</small>
+										</span>
+									</div>
+								</td>
+								{foreach $field->getRowColumns() as $name => $column}
+									<td>
+										{if $column['type'] === Backoffice\Resource\Form\Field::ROW_CHECKBOX}
+											<input n:name="$name" aria-label="{$column['label']} — {$row->label}">
+										{elseif $column['type'] === Backoffice\Resource\Form\Field::ROW_INTEGER}
+											<input n:name="$name" n:class="bo-input, bo-cell-input, bo-cell-number, $formContainer[$name]->hasErrors() ? is-invalid" aria-label="{$column['label']} — {$row->label}" n:attr="data-bo-rows-priority: $name === $sort">
+										{else}
+											<input n:name="$name" n:class="bo-input, bo-cell-input, $formContainer[$name]->hasErrors() ? is-invalid" placeholder="{$column['placeholder']}" aria-label="{$column['label']} — {$row->label}">
+										{/if}
+										<span class="bo-field-error" n:ifcontent>{inputError $name}</span>
+									</td>
+								{/foreach}
+							</tr>
+							{/formContainer}
+						{/foreach}
+						{/formContainer}
+					</tbody>
+				</table>
+			</div>
+		{else}
+			<p class="bo-muted">{$field->getRowsEmptyText()}</p>
+		{/if}
+		<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+	</div>
 {/define}

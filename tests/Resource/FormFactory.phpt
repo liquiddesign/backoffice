@@ -117,3 +117,33 @@ test('počítadlo znaků a text před polem jen u textových polí', function ()
 	Assert::false($description->isCode());
 	Assert::exception(fn () => $builder->text('w', 'W')->code(), LogicException::class);
 });
+
+test('vnořený seznam: kontejner na řádek, výchozí hodnoty z řádku', function (): void {
+	$builder = new FormBuilder();
+	$builder->text('name', 'Název');
+	$builder->rows('members', 'Členové')
+		->rowCheckbox('member', 'Ve skupině')
+		->rowInteger('priority', 'Pořadí')
+		->rowText('isins', 'ISIN', 'oddělené čárkou')
+		->rowsSortableBy('priority');
+
+	$rows = [
+		new Backoffice\Resource\Form\FormRow('a1', 'Alfa', ['member' => 1, 'priority' => 3, 'isins' => 'CZ1']),
+		new Backoffice\Resource\Form\FormRow('b2', 'Beta'),
+	];
+	$factory = new FormFactory();
+	$form = $factory->create($builder, ['cs'], fn (string $field): array => $field === 'members' ? $rows : []);
+
+	Assert::true($form['members']['a1']['member']->getValue());
+	Assert::same(3, $form['members']['a1']['priority']->getValue());
+	Assert::same('CZ1', $form['members']['a1']['isins']->getValue());
+	Assert::true($form['members']['b2']['priority']->isRequired());
+	Assert::null($form['members']['b2']['isins']->getValue());
+
+});
+
+test('vnořený seznam: pole řádku jen u rows(), řazení jen podle čísla', function (): void {
+	$builder = new FormBuilder();
+	Assert::exception(fn () => $builder->text('a', 'A')->rowText('x', 'X'), LogicException::class);
+	Assert::exception(fn () => $builder->rows('b', 'B')->rowText('x', 'X')->rowsSortableBy('x'), LogicException::class);
+});
