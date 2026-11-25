@@ -473,6 +473,9 @@ select.bo-input { padding-right: 28px; }
 .bo-notice > span { flex: 1; min-width: 240px; }
 .bo-notice form { margin: 0; }
 .bo-notice-warn { background: var(--adm-warn-soft); color: var(--adm-warn); border: 1px solid #f0d9a8; }
+.bo-btn-group { display: inline-flex; align-items: center; gap: 4px; }
+.bo-notice-info { background: var(--adm-info-soft); color: var(--adm-info); border: 1px solid #c5d9f5; }
+.bo-form > .bo-notice + .bo-notice { margin-top: -8px; }
 
 /* Přepínač roku v hlavičce */
 .bo-stepper { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 4px; border: 1px solid #cfd5de; border-radius: var(--adm-radius-sm); background: var(--adm-surface); }
@@ -629,6 +632,9 @@ button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
 .bo-rowlist-item.is-muted .bo-rowlist-row > :not(.bo-rowlist-actions) { opacity: .5; }
 .bo-rowlist-thumb { width: 40px; height: 40px; flex: none; border-radius: 8px; background: var(--adm-primary-soft); color: var(--adm-primary); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .bo-rowlist-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.bo-rowlist-thumb.is-wide { width: 132px; height: 40px; border-radius: 4px; }
+.bo-rowlist-num { width: 20px; flex: none; text-align: right; font-size: 12.5px; color: var(--adm-muted); font-variant-numeric: tabular-nums; }
+.bo-rowlist-meta .bo-pills { margin-bottom: 2px; }
 .bo-rowlist-main { flex: 2 1 200px; min-width: 0; }
 .bo-rowlist-main strong { display: block; font-weight: 500; color: var(--adm-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bo-rowlist-main small, .bo-rowlist-meta small { display: block; font-size: 12.5px; color: var(--adm-muted); }
@@ -641,6 +647,8 @@ button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
 .bo-rowlist-edit { padding: 4px 14px 16px 92px; }
 .bo-rowlist-edit .bo-form-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 .bo-rowlist-edit .bo-form-actions .bo-grow { flex: 1; }
+.bo-body .bo-rowlist-add { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 14px 14px; padding: 14px; border: 1.5px dashed var(--adm-line); border-radius: var(--adm-radius); color: var(--adm-primary); font-weight: 500; text-decoration: none; }
+.bo-body .bo-rowlist-add:hover { border-color: var(--adm-primary); background: var(--adm-primary-soft); }
 .bo-rowlist-empty { padding: 24px 14px; color: var(--adm-muted); text-align: center; }
 .bo-preview { padding: 18px; background: #f0f3f7; border-radius: 0 0 6px 6px; }
 .bo-preview-box { background: #fff; border-radius: 4px; padding: 16px; box-shadow: 0 2px 12px rgba(0, 0, 0, .06); }

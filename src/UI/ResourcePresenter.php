@@ -521,12 +521,25 @@ final class ResourcePresenter extends BackofficePresenter
 		foreach ($this->getDefinition()->buildList()->getColumns() as $column) {
 			if ($column->isLink()) {
 				$value = $entity->getValue($column->name);
+				$title = \is_scalar($value) ? self::plainTitle((string) $value) : '';
 
-				return \is_scalar($value) && (string) $value !== '' ? (string) $value : (string) $entity->getPK();
+				return $title !== '' ? $title : (string) $entity->getPK();
 			}
 		}
 
 		return (string) $entity->getPK();
+	}
+
+	/**
+	 * Název záznamu z textu, který může být HTML (formátovaný text): bez značek, na jeden řádek, zkrácený.
+	 */
+	public static function plainTitle(string $value): string
+	{
+		if (\str_contains($value, '<')) {
+			$value = \html_entity_decode(\strip_tags((string) \preg_replace('~<(br|/p|/h[1-6]|/div|/li)\b[^>]*>~i', ' $0', $value)), \ENT_QUOTES | \ENT_HTML5, 'UTF-8');
+		}
+
+		return \Nette\Utils\Strings::truncate(\Nette\Utils\Strings::trim((string) \preg_replace('~[\s\x{A0}]+~u', ' ', $value)), 80);
 	}
 
 	protected function createComponentForm(): Form
@@ -637,6 +650,7 @@ final class ResourcePresenter extends BackofficePresenter
 
 		$lock = $this->entity !== null ? $this->getDefinition()->lockReason($this->entity) : null;
 		$this->template->lockReason = $lock;
+		$this->template->notices = $this->entity !== null ? $this->getDefinition()->formNotices($this->entity) : [];
 
 		if ($lock !== null) {
 			$this->template->canDelete = false;

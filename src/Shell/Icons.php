@@ -28,6 +28,8 @@ final class Icons
 		'logo' => '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
 		'dot' => '<circle cx="12" cy="12" r="3"/>',
 		'alert' => '<path d="M12 4l9 16H3zM12 10v4M12 17h.01"/>',
+		'info' => '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>',
+		'image' => '<rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 15l4-4 4 4 3-3 5 5M15 9h.01"/>',
 		'edit' => '<path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/>',
 		'lock' => '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 		'trash' => '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',

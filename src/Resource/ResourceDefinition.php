@@ -101,6 +101,18 @@ abstract class ResourceDefinition
 	}
 
 	/**
+	 * Upozornění nad formulářem záznamu (kde se záznam na webu ukáže, kontrola odkazů…):
+	 * dvojice [úroveň, text], úroveň FormNotice::WARN (žlutě) nebo FormNotice::INFO (modře).
+	 * @return list<array{string, string}>
+	 */
+	public function formNotices(Entity $entity): array
+	{
+		unset($entity);
+
+		return [];
+	}
+
+	/**
 	 * Výchozí hodnoty formuláře ze záznamu — pro pole, která nejsou sloupcem (typ, odvozené hodnoty).
 	 * @param array<string, mixed> $defaults
 	 * @return array<string, mixed>

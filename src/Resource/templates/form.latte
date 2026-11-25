@@ -6,10 +6,12 @@
 {varType array $fileInfo}
 {varType array $relationLabels}
 {varType string|null $lockReason}
+{varType list<array{string, string}> $notices}
 {block content}
 	<form n:name="form" class="bo-form" data-bo-form novalidate>
 		<div n:foreach="$form->getOwnErrors() as $error" class="bo-flash bo-flash-error" role="alert"><span>{$error}</span></div>
 		<div n:if="$lockReason" class="bo-notice bo-notice-warn" role="status">{Backoffice\Shell\Icons::get('alert', 18)}<span>{$lockReason}</span></div>
+		<div n:foreach="$notices as [$level, $text]" n:class="bo-notice, $level === Backoffice\Resource\FormNotice::WARN ? bo-notice-warn : bo-notice-info" role="status">{Backoffice\Shell\Icons::get($level === Backoffice\Resource\FormNotice::WARN ? 'alert' : 'info', 18)}<span>{$text}</span></div>
 
 		<section n:foreach="$sections as $sectionTitle => $fields" class="bo-card">
 			<div class="bo-card-head"><h2>{$sectionTitle}</h2></div>

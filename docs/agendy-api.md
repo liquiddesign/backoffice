@@ -223,6 +223,7 @@ uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého admin
 | `beforeSave(data, values, entity)` | úprava dat před uložením (pole mimo sloupce, odvozené sloupce) |
 | `lockReason(entity)` | záznam jen ke čtení (z importu): důvod se ukáže nahoře, formulář je zamčený, nejde smazat, hromadné akce ho přeskočí |
 | `deleteBlockReason(entity)` | záznam jde upravit, ale ne smazat (systémový): koš je šedý s důvodem v popisku, hromadné mazání ho přeskočí |
+| `formNotices(entity)` | upozornění nad formulářem záznamu: `[[FormNotice::WARN, 'text'], [FormNotice::INFO, 'text']]` (žlutě / modře) — např. kde se záznam na webu ukáže, kontrola odkazů |
 
 ## Vlastní obrazovka seznamu (`ListView`)
 
@@ -265,6 +266,12 @@ a úchyt `data-bo-grip` — pořadí přetažením nebo šipkami se odešle hned
 na `toggle!` se skrytým `value` a zaškrtávátkem `data-bo-autosubmit`. Mazání z rozbaleného řádku
 musí mít vlastní formulář (tlačítko s `form="…"`), jinak by se poslalo `_do` editačního formuláře.
 Příklad: `App\Web\Backoffice\QuickLinksView` v PSE (rychlé odkazy podle návrhu).
+Další třídy: `bo-rowlist-thumb is-wide` (široký náhled 132 × 40, např. slide), `bo-rowlist-num`
+(pořadové číslo), `bo-rowlist-add` (čárkované „Přidat…“ pod seznamem), `bo-btn-group` (přepínač
+v hlavičce). Příklad: `App\Web\Backoffice\SliderView` v PSE (slider podle návrhu, přepínač CS/EN webu).
+
+Název záznamu ve zprávách („Uloženo: …“, „Skryto: ano — …“) se bere ze sloupce s `->link()`;
+je-li to formátovaný text, zbaví se HTML a zkrátí na 80 znaků.
 
 ## Mazání použitých záznamů
 
