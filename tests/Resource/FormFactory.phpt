@@ -113,4 +113,7 @@ test('počítadlo znaků a text před polem jen u textových polí', function ()
 	Assert::exception(fn () => $builder->checkbox('x', 'X')->counter(10), LogicException::class);
 	Assert::exception(fn () => $builder->textarea('y', 'Y')->prefix('/'), LogicException::class);
 	Assert::exception(fn () => $builder->localeRichText('z', 'Z')->counter(10), LogicException::class);
+	Assert::true($builder->textarea('html', 'HTML')->code()->isCode());
+	Assert::false($description->isCode());
+	Assert::exception(fn () => $builder->text('w', 'W')->code(), LogicException::class);
 });

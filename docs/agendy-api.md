@@ -228,6 +228,8 @@ uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého admin
   — pevný text před polem, neukládá se (jen jednořádková pole).
 - `localeText('title', 'Titulek')->counter(70)` — pod polem „42 / 70“, přes doporučenou délku
   červeně; délku neomezuje (textová pole i textarea).
+- `textarea('html', 'Obsah (HTML)')->code()` — pole na kód: neproporcionální písmo, vyšší, bez
+  kontroly pravopisu a bez zalamování řádků.
 - Pole, které není sloupcem (zaškrtávátko „přesměrovat starou adresu“), se do dat k uložení dostane,
   zpracuje ho `beforeSave()` (v `$values`) a samo se neuloží. Výchozí hodnotu mu dá `formDefaults()`.
 

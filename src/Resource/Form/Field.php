@@ -73,6 +73,8 @@ final class Field
 
 	private ?int $counter = null;
 
+	private bool $code = false;
+
 	/** @var array<string, string> jazyk ('' = pole bez jazyků) → text před polem */
 	private array $prefixes = [];
 
@@ -384,6 +386,26 @@ final class Field
 	public function getCounter(): ?int
 	{
 		return $this->counter;
+	}
+
+	/**
+	 * Víceřádkové pole na kód (HTML šablony, JSON): neproporcionální písmo, vyšší pole, bez
+	 * kontroly pravopisu a bez automatických úprav textu prohlížečem.
+	 */
+	public function code(bool $code = true): self
+	{
+		if (!Arrays::contains([self::TYPE_TEXTAREA, self::TYPE_LOCALE_TEXTAREA], $this->type)) {
+			throw new \LogicException("Pole na kód jde jen u textarea, '{$this->name}' je {$this->type}.");
+		}
+
+		$this->code = $code;
+
+		return $this;
+	}
+
+	public function isCode(): bool
+	{
+		return $this->code;
 	}
 
 	/**

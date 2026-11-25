@@ -398,6 +398,7 @@
 .bo-check { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .bo-empty { padding: 32px 18px; text-align: center; color: var(--adm-muted); }
 textarea.bo-input { height: auto; min-height: 90px; padding: 8px 10px; }
+textarea.bo-code { min-height: 320px; font-family: var(--adm-mono, ui-monospace, monospace); font-size: 13px; line-height: 1.5; tab-size: 4; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
 .bo-field-error { color: var(--adm-danger); font-size: 12.5px; }
 
 /* Agendy */

@@ -103,11 +103,12 @@
 	{$control->getControlPart()->addAttributes(Backoffice\Resource\Form\FormFactory::richTextAttributes($field, $mutation, $richText ?? null, $control->hasErrors()))}
 {/define}
 
-{* Textové pole (i jazykové): třída, počítadlo znaků (Field::counter) a pevný text před polem (Field::prefix). *}
+{* Textové pole (i jazykové): třída, počítadlo znaků (Field::counter), pole na kód (Field::code) a pevný text před polem (Field::prefix). *}
 {define textInput, Backoffice\Resource\Form\Field $field, Nette\Forms\Controls\BaseControl $control, ?string $mutation}
 	{var $prefix = $field->getPrefix($mutation)}
 	{var $input = $control->getControl()->addClass('bo-input')->addClass($control->hasErrors() ? 'is-invalid' : null)}
 	{if $field->getCounter() !== null}{do $input->setAttribute('data-bo-counter', $field->getCounter())}{/if}
+	{if $field->isCode()}{do $input->addClass('bo-code')->setAttribute('spellcheck', 'false')->setAttribute('autocapitalize', 'off')->setAttribute('autocomplete', 'off')}{/if}
 	{if $prefix !== null}
 		<div class="bo-input-group"><span class="bo-input-prefix">{$prefix}</span>{$input}</div>
 	{else}
