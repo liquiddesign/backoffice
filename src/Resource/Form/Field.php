@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Backoffice\Resource\Form;
 
 use Nette\Utils\Arrays;
+use Nette\Utils\Strings;
 
 /**
  * Pole formuláře agendy. Nette formulář z něj sestaví FormControl (etapa 1).
@@ -28,6 +29,8 @@ final class Field
 	public const TYPE_RICH_TEXT = 'richText';
 	public const TYPE_LOCALE_RICH_TEXT = 'localeRichText';
 	public const TYPE_ROWS = 'rows';
+	public const TYPE_DATETIME = 'datetime';
+	public const TYPE_RELATIONS = 'relations';
 
 	public const ROW_CHECKBOX = 'checkbox';
 	public const ROW_INTEGER = 'integer';
@@ -89,6 +92,8 @@ final class Field
 	private ?string $rowSortColumn = null;
 
 	private string $rowsEmptyText = 'Zatím tu nic není.';
+
+	private ?string $richTextUploadDirectory = null;
 
 	public function __construct(
 		public readonly string $type,
@@ -442,6 +447,26 @@ final class Field
 	public function getPrefix(?string $mutation = null): ?string
 	{
 		return $this->prefixes[$mutation ?? ''] ?? null;
+	}
+
+	/**
+	 * Formátovaný text: obrázek vložený do editoru (přetažením, ze schránky) se nahraje do
+	 * userfiles/<directory> a do textu se vloží jeho adresa bez domény (/userfiles/…).
+	 */
+	public function richTextUploads(string $directory): self
+	{
+		if (!$this->isRichText()) {
+			throw new \LogicException("Nahrávání obrázků do textu má jen formátovaný text, ne '{$this->name}'.");
+		}
+
+		$this->richTextUploadDirectory = Strings::trim($directory, '/');
+
+		return $this;
+	}
+
+	public function getRichTextUploadDirectory(): ?string
+	{
+		return $this->richTextUploadDirectory;
 	}
 
 	/**

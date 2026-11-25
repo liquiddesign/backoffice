@@ -47,6 +47,8 @@ class Column
 
 	private ?string $externalUrl = null;
 
+	private ?\Closure $href = null;
+
 	/** @var (\Closure(\StORM\Entity): mixed)|null */
 	private ?\Closure $value = null;
 
@@ -171,6 +173,23 @@ class Column
 	public function getExternalUrl(): ?string
 	{
 		return $this->externalUrl;
+	}
+
+	/**
+	 * Hodnota je odkaz ven (v novém okně) na spočítanou adresu: fn (Entity $row) => ?string
+	 * (např. novinka na webu). Null = bez odkazu.
+	 * @param callable(\StORM\Entity): ?string $href
+	 */
+	public function href(callable $href): static
+	{
+		$this->href = \Closure::fromCallable($href);
+
+		return $this;
+	}
+
+	public function getHref(): ?\Closure
+	{
+		return $this->href;
 	}
 
 	/**

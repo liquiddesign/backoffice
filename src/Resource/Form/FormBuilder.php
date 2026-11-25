@@ -106,6 +106,25 @@ final class FormBuilder
 	}
 
 	/**
+	 * Datum a čas (<input type="datetime-local">); ukládá se 'RRRR-MM-DD HH:MM:SS', prázdné = NULL.
+	 */
+	public function datetime(string $name, string $label): Field
+	{
+		return $this->add(Field::TYPE_DATETIME, $name, $label);
+	}
+
+	/**
+	 * Víc vazeb na záznamy jiné tabulky (N:N): štítky vybraných, pole s hledáním přidá další
+	 * (popisek a hledané sloupce přes ->relationLabel(), stejně jako relation()). Do sloupců záznamu
+	 * nejde: výchozí seznam klíčů dodá formDefaults(), uložení afterSave() — v $values je list klíčů.
+	 * @param \StORM\Repository<covariant \StORM\Entity> $repository
+	 */
+	public function relations(string $name, string $label, \StORM\Repository $repository): Field
+	{
+		return $this->add(Field::TYPE_RELATIONS, $name, $label)->setRelationRepository($repository);
+	}
+
+	/**
 	 * Soubor nahraný do userfiles (PDF…); adresář přes ->fileDirectory(). Ve sloupci je jméno souboru.
 	 */
 	public function file(string $name, string $label): Field

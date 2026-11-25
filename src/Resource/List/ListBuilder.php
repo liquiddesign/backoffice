@@ -33,6 +33,9 @@ final class ListBuilder
 
 	private ?string $searchPlaceholder = null;
 
+	/** @var list<\Closure(string): (array{string, array<string, mixed>}|null)> */
+	private array $searchAlso = [];
+
 	/** @var array<string, string> sloupec → záhlaví v CSV */
 	private array $csvColumns = [];
 
@@ -130,6 +133,27 @@ final class ListBuilder
 		$this->searchPlaceholder = $placeholder;
 
 		return $this;
+	}
+
+	/**
+	 * Hledání navíc mimo sloupce seznamu (vazba přes jinou tabulku, přesné ID): fn (string $text)
+	 * vrátí [SQL podmínka, parametry] — přidá se k hledání přes OR — nebo null, když se na text nehodí.
+	 * Parametry pojmenujte vlastní předponou; :bo_q je hledaný text v LIKE tvaru.
+	 * @param callable(string): (array{string, array<string, mixed>}|null) $condition
+	 */
+	public function searchAlso(callable $condition): self
+	{
+		$this->searchAlso[] = \Closure::fromCallable($condition);
+
+		return $this;
+	}
+
+	/**
+	 * @return list<\Closure(string): (array{string, array<string, mixed>}|null)>
+	 */
+	public function getSearchAlso(): array
+	{
+		return $this->searchAlso;
 	}
 
 	/**
@@ -343,7 +367,7 @@ final class ListBuilder
 	 */
 	public function hasSearch(): bool
 	{
-		return $this->getSearchableColumns() !== [];
+		return $this->getSearchableColumns() !== [] || $this->searchAlso !== [];
 	}
 
 	public function getSearchPlaceholder(): string

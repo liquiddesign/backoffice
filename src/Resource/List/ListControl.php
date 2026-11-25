@@ -210,6 +210,14 @@ final class ListControl extends Control
 	 */
 	public function cellUrl(Entity $row, Column $column): ?string
 	{
+		$href = $column->getHref();
+
+		if ($href !== null) {
+			$url = $href($row);
+
+			return \is_string($url) && $url !== '' ? $url : null;
+		}
+
 		$pattern = $column->getExternalUrl();
 
 		if ($pattern === null) {
@@ -478,8 +486,21 @@ final class ListControl extends Control
 				}
 			}
 
+			$params = ['bo_q' => '%' . \addcslashes($query, '%_\\') . '%'];
+
+			foreach ($this->getList()->getSearchAlso() as $extra) {
+				$condition = $extra($query);
+
+				if ($condition === null) {
+					continue;
+				}
+
+				$conditions[] = '(' . $condition[0] . ')';
+				$params += $condition[1];
+			}
+
 			if ($conditions !== []) {
-				$collection->where('(' . \implode(' OR ', \array_unique($conditions)) . ')', ['bo_q' => '%' . \addcslashes($query, '%_\\') . '%']);
+				$collection->where('(' . \implode(' OR ', \array_unique($conditions)) . ')', $params);
 			}
 		}
 

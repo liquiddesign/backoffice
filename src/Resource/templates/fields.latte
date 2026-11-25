@@ -57,6 +57,25 @@
 			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
 			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
 		</div>
+	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_RELATIONS}
+		{var $chips = ($relationLabels ?? [])[$field->name] ?? []}
+		{var $disabled = $form[$field->name]->isDisabled()}
+		<div class="bo-field">
+			<label for="{$form[$field->name]->getHtmlId()}-search">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
+			<div n:class="bo-lookup, bo-lookup-multi, $form[$field->name]->hasErrors() ? is-invalid" data-bo-lookup="{plink lookup! field => $field->name}" data-bo-lookup-multi>
+				<input n:name="$field->name" type="hidden" data-bo-lookup-value>
+				<ul class="bo-chips" data-bo-chips aria-label="Vybráno">
+					<li n:foreach="$chips as $key => $label" class="bo-chip" data-bo-chip="{$key}">
+						<span>{$label}</span>
+						<button n:if="!$disabled" type="button" class="bo-chip-remove" data-bo-chip-remove aria-label="Odebrat {$label}" title="Odebrat">&times;</button>
+					</li>
+				</ul>
+				<input n:if="!$disabled" type="text" id="{$form[$field->name]->getHtmlId()}-search" class="bo-input" placeholder="Začněte psát a přidejte ze seznamu" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{$form[$field->name]->getHtmlId()}-list" data-bo-lookup-input>
+				<ul class="bo-lookup-list" id="{$form[$field->name]->getHtmlId()}-list" role="listbox" hidden data-bo-lookup-list></ul>
+			</div>
+			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
+			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+		</div>
 	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_FILE}
 		{var $file = ($fileInfo ?? [])[$field->name] ?? null}
 		<div class="bo-field">
@@ -79,6 +98,7 @@
 	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_CHECKBOX}
 		<div class="bo-field">
 			<label class="bo-check"><input n:name="$field->name"> {$field->label}</label>
+			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
 			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
 		</div>
 	{else}
@@ -91,7 +111,7 @@
 			{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_SELECT}
 				<select n:name="$field->name" n:class="bo-input, $form[$field->name]->hasErrors() ? is-invalid"></select>
 			{else}
-				<input n:name="$field->name" n:class="bo-input, $field->type === 'date' ? bo-input-date, $form[$field->name]->hasErrors() ? is-invalid">
+				<input n:name="$field->name" n:class="bo-input, $field->type === 'date' || $field->type === 'datetime' ? bo-input-date, $form[$field->name]->hasErrors() ? is-invalid">
 			{/if}
 			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
 			<span n:if="$field->type === Backoffice\Resource\Form\Field::TYPE_DATE" class="bo-field-warn" id="{$form[$field->name]->getHtmlId()}-warn" aria-live="polite"></span>
@@ -102,7 +122,8 @@
 {/foreach}
 
 {define richText, Backoffice\Resource\Form\Field $field, ?string $mutation, Nette\Forms\Controls\BaseControl $control}
-	{$control->getControlPart()->addAttributes(Backoffice\Resource\Form\FormFactory::richTextAttributes($field, $mutation, $richText ?? null, $control->hasErrors()))}
+	{var $uploadUrl = $field->getRichTextUploadDirectory() !== null ? $presenter->link('//richTextUpload!', [field => $field->name]) : null}
+	{$control->getControlPart()->addAttributes(Backoffice\Resource\Form\FormFactory::richTextAttributes($field, $mutation, $richText ?? null, $control->hasErrors(), $uploadUrl))}
 {/define}
 
 {* Textové pole (i jazykové): třída, počítadlo znaků (Field::counter), pole na kód (Field::code) a pevný text před polem (Field::prefix). *}

@@ -6,6 +6,7 @@ namespace Backoffice\Resource\Form;
 
 use Nette\Application\UI\Form;
 use Nette\Forms\Controls\BaseControl;
+use Nette\Utils\Arrays;
 use Nette\Utils\Json;
 use Nette\Utils\Strings;
 use StORM\Entity;
@@ -89,11 +90,17 @@ final class FormFactory
 
 		foreach ($builder->getFields() as $name => $field) {
 			// Vnořený seznam má výchozí hodnoty z řádků (FormRow::$values), ne ze sloupce.
-			if (self::isUpload($field) || $field->type === Field::TYPE_ROWS) {
+			if (self::isUpload($field) || $field->type === Field::TYPE_ROWS || $field->type === Field::TYPE_RELATIONS) {
 				continue;
 			}
 
 			$value = $data[$name] ?? null;
+
+			if ($field->type === Field::TYPE_DATETIME) {
+				$defaults[$name] = $this->encodeDefaults($builder, [$name => $value])[$name];
+
+				continue;
+			}
 
 			if ($field->type === Field::TYPE_DATE && \is_string($value)) {
 				$value = Strings::substring($value, 0, 10);
@@ -121,7 +128,13 @@ final class FormFactory
 
 		foreach ($builder->getFields() as $name => $field) {
 			// Obrázky ukládá presenter až po uložení záznamu (jméno souboru = ID záznamu).
-			if (!\array_key_exists($name, $values) || self::isUpload($field) || $field->type === Field::TYPE_ROWS) {
+			if (!\array_key_exists($name, $values) || self::isUpload($field) || $field->type === Field::TYPE_ROWS || $field->type === Field::TYPE_RELATIONS) {
+				continue;
+			}
+
+			if ($field->type === Field::TYPE_DATETIME) {
+				$result[$name] = self::datetimeValue($values[$name]);
+
 				continue;
 			}
 
@@ -147,6 +160,53 @@ final class FormFactory
 	}
 
 	/**
+	 * Hodnoty pro uložení po kontrole: víc vazeb jako list klíčů, datum a čas jako 'RRRR-MM-DD HH:MM:SS'.
+	 * @param array<string, mixed> $values
+	 * @return array<string, mixed>
+	 */
+	public function normalize(FormBuilder $builder, array $values): array
+	{
+		foreach ($builder->getFields() as $name => $field) {
+			if (!\array_key_exists($name, $values)) {
+				continue;
+			}
+
+			if ($field->type === Field::TYPE_RELATIONS) {
+				$values[$name] = self::relationKeys($values[$name]);
+			} elseif ($field->type === Field::TYPE_DATETIME) {
+				$values[$name] = self::datetimeValue($values[$name]);
+			}
+		}
+
+		return $values;
+	}
+
+	/**
+	 * Výchozí hodnoty z agendy pro formulář: list klíčů vazeb na text pole, datum a čas na tvar inputu.
+	 * @param array<string, mixed> $defaults
+	 * @return array<string, mixed>
+	 */
+	public function encodeDefaults(FormBuilder $builder, array $defaults): array
+	{
+		foreach ($builder->getFields() as $name => $field) {
+			if (!\array_key_exists($name, $defaults)) {
+				continue;
+			}
+
+			if ($field->type === Field::TYPE_RELATIONS) {
+				$defaults[$name] = \implode(',', self::relationKeys($defaults[$name] ?? []));
+			} elseif ($field->type === Field::TYPE_DATETIME) {
+				$value = $defaults[$name];
+				$defaults[$name] = $value instanceof \DateTimeInterface
+					? $value->format('Y-m-d\\TH:i')
+					: (\is_string($value) && $value !== '' ? Strings::substring(\str_replace(' ', 'T', $value), 0, 16) : null);
+			}
+		}
+
+		return $defaults;
+	}
+
+	/**
 	 * Obrázek nebo soubor — ukládá je presenter zvlášť, do hodnot formuláře nepatří.
 	 */
 	public static function isUpload(Field $field): bool
@@ -155,13 +215,42 @@ final class FormFactory
 	}
 
 	/**
-	 * Atributy textarea formátovaného textu: nastavení editoru (RichTextEditor::config() + pole)
-	 * a skripty, které balíkový JS načte (viz RichTextEditor).
+	 * Klíče víc vazeb z hodnoty pole (čárkami oddělené, jak je drží skryté pole formuláře).
+	 * @return list<string>
+	 */
+	public static function relationKeys(mixed $value): array
+	{
+		if (\is_array($value)) {
+			return \array_values(\array_unique(\array_map('strval', $value)));
+		}
+
+		$keys = [];
+
+		foreach (\explode(',', (string) $value) as $key) {
+			$key = Strings::trim($key);
+
+			if ($key === '' || Arrays::contains($keys, $key)) {
+				continue;
+			}
+
+			$keys[] = $key;
+		}
+
+		return $keys;
+	}
+
+	/**
+	 * Atributy textarea formátovaného textu: nastavení editoru (RichTextEditor::config() + pole,
+	 * s Field::richTextUploads() i uploadUrl) a skripty, které balíkový JS načte (viz RichTextEditor).
 	 * @return array<string, string>
 	 */
-	public static function richTextAttributes(Field $field, ?string $mutation, ?RichTextEditor $editor, bool $invalid): array
+	public static function richTextAttributes(Field $field, ?string $mutation, ?RichTextEditor $editor, bool $invalid, ?string $uploadUrl = null): array
 	{
 		$config = $field->getEditorOptions() + ($editor?->config($field, $mutation) ?? []);
+
+		if ($uploadUrl !== null) {
+			$config['uploadUrl'] = $uploadUrl;
+		}
 
 		return [
 			'class' => 'bo-input bo-richtext' . ($invalid ? ' is-invalid' : ''),
@@ -252,6 +341,8 @@ final class FormFactory
 			Field::TYPE_SELECT => $this->createSelect($form, $field),
 			Field::TYPE_DATE => $this->createDate($form, $field),
 			Field::TYPE_RELATION => $this->createRelation($form, $field),
+			Field::TYPE_RELATIONS => $this->createRelations($form, $field),
+			Field::TYPE_DATETIME => $this->createDatetime($form, $field),
 			default => $form->addText($field->name, $field->label),
 		};
 	}
@@ -265,6 +356,30 @@ final class FormFactory
 		}
 
 		return $select;
+	}
+
+	private function createDatetime(Form $form, Field $field): BaseControl
+	{
+		$input = $form->addText($field->name, $field->label)->setHtmlType('datetime-local')->setNullable();
+		$input->addCondition(Form::Filled)
+			->addRule(Form::Pattern, 'Datum a čas zadejte ve tvaru RRRR-MM-DD HH:MM.', '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?');
+
+		return $input;
+	}
+
+	private function createRelations(Form $form, Field $field): BaseControl
+	{
+		$repository = $field->getRelationRepository() ?? throw new \LogicException("Vazby '{$field->name}' nemají repozitář.");
+		$pk = 'this.' . $repository->getStructure()->getPK()->getName();
+		$input = $form->addText($field->name, $field->label)->setNullable();
+		$input->addCondition(Form::Filled)
+			->addRule(static function ($control) use ($repository, $pk): bool {
+				$keys = self::relationKeys($control->getValue());
+
+				return $keys === [] || $repository->many()->where($pk, $keys)->count() === \count($keys);
+			}, 'Vyberte položky ze seznamu.');
+
+		return $input;
 	}
 
 	private function createRelation(Form $form, Field $field): BaseControl
@@ -284,5 +399,16 @@ final class FormFactory
 			->addRule(Form::Pattern, 'Datum zadejte ve tvaru RRRR-MM-DD.', self::DATE_PATTERN);
 
 		return $date;
+	}
+
+	private static function datetimeValue(mixed $value): ?string
+	{
+		if (!\is_string($value) || Strings::trim($value) === '') {
+			return null;
+		}
+
+		$date = \DateTimeImmutable::createFromFormat('!Y-m-d\\TH:i', Strings::substring(Strings::trim($value), 0, 16));
+
+		return $date !== false ? $date->format('Y-m-d H:i:s') : null;
 	}
 }

@@ -651,15 +651,47 @@
 	});
 
 	// Vazba s hledáním (FormBuilder::relation()): napsat část názvu, vybrat ze seznamu.
+	// Víc vazeb (FormBuilder::relations(), data-bo-lookup-multi): výběr přidá štítek, × ho odebere;
+	// skryté pole drží klíče oddělené čárkou.
 	document.querySelectorAll('[data-bo-lookup]').forEach(function (box) {
 		var url = box.dataset.boLookup;
 		var input = box.querySelector('[data-bo-lookup-input]');
 		var hidden = box.querySelector('[data-bo-lookup-value]');
 		var list = box.querySelector('[data-bo-lookup-list]');
+		var multi = box.hasAttribute('data-bo-lookup-multi');
+		var chips = box.querySelector('[data-bo-chips]');
 		var timer = null;
 		var items = [];
 		var active = -1;
-		var selectedLabel = input.value;
+
+		var keys = function () {
+			return hidden.value.split(',').filter(function (key) { return key !== ''; });
+		};
+
+		if (multi && chips) {
+			chips.addEventListener('click', function (event) {
+				var remove = event.target.closest('[data-bo-chip-remove]');
+
+				if (!remove) {
+					return;
+				}
+
+				var chip = remove.closest('[data-bo-chip]');
+				hidden.value = keys().filter(function (key) { return key !== chip.dataset.boChip; }).join(',');
+				chip.remove();
+				hidden.dispatchEvent(new Event('change', { bubbles: true }));
+
+				if (input) {
+					input.focus();
+				}
+			});
+		}
+
+		if (!input) {
+			return;
+		}
+
+		var selectedLabel = multi ? '' : input.value;
 
 		var close = function () {
 			list.hidden = true;
@@ -679,6 +711,33 @@
 		};
 
 		var choose = function (item) {
+			if (multi) {
+				if (keys().indexOf(item.id) === -1) {
+					hidden.value = keys().concat([item.id]).join(',');
+					var chip = document.createElement('li');
+					chip.className = 'bo-chip';
+					chip.dataset.boChip = item.id;
+					var text = document.createElement('span');
+					text.textContent = item.label;
+					var remove = document.createElement('button');
+					remove.type = 'button';
+					remove.className = 'bo-chip-remove';
+					remove.setAttribute('data-bo-chip-remove', '');
+					remove.setAttribute('aria-label', 'Odebrat ' + item.label);
+					remove.title = 'Odebrat';
+					remove.textContent = '\u00d7';
+					chip.appendChild(text);
+					chip.appendChild(remove);
+					chips.appendChild(chip);
+					hidden.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+
+				input.value = '';
+				close();
+
+				return;
+			}
+
 			hidden.value = item.id;
 			input.value = item.label;
 			selectedLabel = item.label;
@@ -722,7 +781,7 @@
 		};
 
 		input.addEventListener('input', function () {
-			if (input.value === '') {
+			if (input.value === '' && !multi) {
 				hidden.value = '';
 				hidden.dispatchEvent(new Event('change', { bubbles: true }));
 			}

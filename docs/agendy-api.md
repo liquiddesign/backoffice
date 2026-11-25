@@ -242,6 +242,29 @@ uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého admin
   — pole s hledáním: píše se část názvu, nabídne 20 položek (signál `lookup!`, JSON), uloží se klíč.
   Neexistující klíč = chyba u pole.
 
+### Datum a čas, víc vazeb, obrázky v textu
+
+- `datetime('publishedAt', 'Publikováno')` — `<input type="datetime-local">`; ze sloupce
+  `RRRR-MM-DD HH:MM:SS` do pole a zpět, prázdné = `NULL`. Výchozí hodnota ve tvaru `RRRR-MM-DDTHH:MM`.
+- `relations('isins', 'Emise', $repo)->relationLabel(…)` — víc vazeb N:N: štítky vybraných s ×, pole
+  s hledáním (signál `lookup!` jako u `relation()`) přidá další. Do sloupců nejde: výchozí list klíčů
+  vrátí `formDefaults()` (`$defaults['isins'] = ['CZ…', …]`), uloží `afterSave()` — v `$values['isins']`
+  je list klíčů. Neznámý klíč = chyba u pole.
+- `localeRichText('content', 'Obsah')->richTextUploads('news-images')` — obrázek přetažený nebo vložený
+  do editoru se nahraje (signál `richTextUpload!`, do 5 MB, WebP vedle přes `ImageStorage::$onSave`)
+  a do textu jde adresa bez domény `/userfiles/news-images/…`.
+
+V hácích `beforeSave()` / `afterSave()` jsou hodnoty už převedené: víc vazeb jako list klíčů, datum
+a čas jako `RRRR-MM-DD HH:MM:SS`.
+
+### Velké seznamy
+
+Stránkování a počet jdou v SQL (`LIMIT`, `COUNT`), takže seznam o desítkách tisíc řádků se načte
+stejně rychle jako malý (Novinky v PSE: 12 400 řádků, ~350 ms i s hledáním). Hledání mimo sloupce
+seznamu: `$list->searchAlso(fn (string $text) => ['EXISTS (… LIKE :bo_x)', ['bo_x' => …]])` —
+podmínka se přidá k hledání přes OR (vazba přes jinou tabulku, přesné ID); null = na tenhle text
+se nehodí. Spočítaný odkaz ven: `$list->text('slug', 'Na webu')->value(…)->href(fn (Entity $row) => $url)`.
+
 ### Vnořený seznam (`rows`)
 
 Podřízené záznamy přímo ve formuláři — konzultanti ve skupině, skupiny konzultanta (vazba N:N

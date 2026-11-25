@@ -9,6 +9,14 @@ use Tester\Assert;
 
 require __DIR__ . '/../bootstrap.php';
 
+/**
+ * Repozitář jen pro FormBuilder::relations() — encodeDefaults()/normalize() do databáze nesahají.
+ * @extends \StORM\Repository<\StORM\Entity>
+ */
+class FakeRepository extends StORM\Repository
+{
+}
+
 test('jazykové pole: kontejner, povinný jen hlavní jazyk', function (): void {
 	$builder = new FormBuilder();
 	$builder->localeText('name', 'Název')->required();
@@ -146,4 +154,36 @@ test('vnořený seznam: pole řádku jen u rows(), řazení jen podle čísla', 
 	$builder = new FormBuilder();
 	Assert::exception(fn () => $builder->text('a', 'A')->rowText('x', 'X'), LogicException::class);
 	Assert::exception(fn () => $builder->rows('b', 'B')->rowText('x', 'X')->rowsSortableBy('x'), LogicException::class);
+});
+
+test('datum a čas: input datetime-local, do databáze s vteřinami, prázdné = NULL', function (): void {
+	$builder = new FormBuilder();
+	$builder->datetime('publishedAt', 'Publikováno');
+	$factory = new FormFactory();
+	$form = $factory->create($builder, ['cs']);
+
+	Assert::same('datetime-local', $form['publishedAt']->getControl()->type);
+	Assert::same(['publishedAt' => '2026-11-25T09:30'], $factory->encodeDefaults($builder, ['publishedAt' => '2026-11-25 09:30:00']));
+	Assert::same(['publishedAt' => '2026-11-25 09:30:00'], $factory->normalize($builder, ['publishedAt' => '2026-11-25T09:30']));
+	Assert::same(['publishedAt' => null], $factory->normalize($builder, ['publishedAt' => '']));
+});
+
+test('víc vazeb: klíče čárkami, bez opakování a prázdných', function (): void {
+	Assert::same(['CZ1', 'CZ2'], FormFactory::relationKeys('CZ1, CZ2,,CZ1'));
+	Assert::same([], FormFactory::relationKeys(null));
+	Assert::same(['a', 'b'], FormFactory::relationKeys(['a', 'b', 'a']));
+
+	$builder = new FormBuilder();
+	$builder->text('name', 'Název');
+	$builder->relations('isins', 'Emise', (new ReflectionClass(FakeRepository::class))->newInstanceWithoutConstructor());
+	$factory = new FormFactory();
+
+	Assert::same(['isins' => 'CZ1,CZ2'], $factory->encodeDefaults($builder, ['isins' => ['CZ1', 'CZ2']]));
+	Assert::same(['name' => 'x', 'isins' => ['CZ1']], $factory->normalize($builder, ['name' => 'x', 'isins' => 'CZ1']));
+});
+
+test('formátovaný text: nahrávání obrázků jen u formátovaného textu', function (): void {
+	$builder = new FormBuilder();
+	Assert::same('news-images', $builder->localeRichText('content', 'Obsah')->richTextUploads('/news-images/')->getRichTextUploadDirectory());
+	Assert::exception(fn () => $builder->text('a', 'A')->richTextUploads('x'), LogicException::class);
 });

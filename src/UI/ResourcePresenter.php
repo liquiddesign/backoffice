@@ -38,6 +38,8 @@ final class ResourcePresenter extends BackofficePresenter
 	/** Kolik posledních vratných změn si session pamatuje (tlačítko „Vrátit“). */
 	private const UNDO_LIMIT = 10;
 
+	private const RICH_TEXT_UPLOAD_LIMIT = 5 * 1024 * 1024;
+
 	#[Persistent]
 	public string $resource = '';
 
@@ -150,7 +152,7 @@ final class ResourcePresenter extends BackofficePresenter
 			return;
 		}
 
-		$this['form']->setDefaults($definition->formDefaults($this->formFactory->defaults($definition->buildForm(), $entity), $entity));
+		$this['form']->setDefaults($this->formFactory->encodeDefaults($definition->buildForm(), $definition->formDefaults($this->formFactory->defaults($definition->buildForm(), $entity), $entity)));
 	}
 
 	public function actionNew(): void
@@ -173,7 +175,9 @@ final class ResourcePresenter extends BackofficePresenter
 		}
 
 		$definition = $this->getDefinition();
-		$this['form']->setDefaults($definition->formDefaults($this->formFactory->defaults($definition->buildForm(), $this->entity), $this->entity));
+		$builder = $definition->buildForm();
+		$defaults = $definition->formDefaults($this->formFactory->defaults($builder, $this->entity), $this->entity);
+		$this['form']->setDefaults($this->formFactory->encodeDefaults($builder, $defaults));
 	}
 
 	public function renderEdit(): void
@@ -382,6 +386,40 @@ final class ResourcePresenter extends BackofficePresenter
 	/**
 	 * Adresa náhledu obrázku z userfiles, nebo null, když soubor není.
 	 */
+	/**
+	 * Obrázek vložený do formátovaného textu (Field::richTextUploads()): uloží ho do userfiles a vrátí
+	 * JSON pro TinyMCE {location} s adresou bez domény, nebo {error}. Do 5 MB, jen obrázky.
+	 */
+	#[Requires(methods: 'POST', sameOrigin: true)]
+	public function handleRichTextUpload(string $field): void
+	{
+		if (!$this->isAllowedAction('edit') && !$this->isAllowedAction('new')) {
+			$this->error('Nemáte oprávnění.', 403);
+		}
+
+		$directory = ($this->getDefinition()->buildForm()->getFields()[$field] ?? null)?->getRichTextUploadDirectory();
+
+		if ($directory === null) {
+			$this->error('Pole nemá nahrávání obrázků.');
+		}
+
+		$file = $this->getHttpRequest()->getFile('file');
+
+		if (!$file instanceof FileUpload || !$file->isOk() || !$file->isImage()) {
+			$this->sendJson(['error' => 'Soubor se nenahrál, nebo to není obrázek (JPG, PNG, GIF, WebP).']);
+		}
+
+		if ($file->getSize() > self::RICH_TEXT_UPLOAD_LIMIT) {
+			$this->sendJson(['error' => 'Obrázek je větší než 5 MB.']);
+		}
+
+		$basename = Random::generate(8) . '-' . Strings::webalize((string) \pathinfo($file->getUntrustedName(), \PATHINFO_FILENAME));
+		$filename = $this->images->save($file, [$directory => null], $basename);
+		$url = (string) $this->images->url($directory, $filename);
+
+		$this->sendJson(['location' => (string) Strings::before($url . '?', '?')]);
+	}
+
 	public function imageUrl(?string $directory, mixed $filename): ?string
 	{
 		return $directory !== null && \is_string($filename) && $filename !== '' ? $this->images->url($directory, $filename) : null;
@@ -579,7 +617,14 @@ final class ResourcePresenter extends BackofficePresenter
 
 	/**
 	 * Data pro šablonu polí formuláře k upravovanému záznamu: náhledy obrázků, soubory, popisky vazeb.
-	 * @return array{imageUrls: array<string, string>, fileInfo: array<string, array{string, string|null, int|null}>, relationLabels: array<string, string>, entity: ?\StORM\Entity}
+	 * @return array{
+	 *     imageUrls: array<string, string>,
+	 *     fileInfo: array<string, array{string, string|null, int|null}>,
+	 *     relationLabels: array<string, string|array<string, string>>,
+	 *     formRows: array<string, list<\Backoffice\Resource\Form\FormRow>>,
+	 *     entity: ?\StORM\Entity,
+	 *     richText: ?\Backoffice\Resource\Form\RichTextEditor
+	 * }
 	 */
 	public function formContext(): array
 	{
@@ -647,6 +692,8 @@ final class ResourcePresenter extends BackofficePresenter
 
 			$repository = $meta->getRepository();
 			$data = $this->formFactory->values($definition->buildForm(), $values, $repository->getStructure());
+			// Háčkům agendy víc vazeb jako list klíčů, datum a čas ve tvaru pro databázi.
+			$values = $this->formFactory->normalize($definition->buildForm(), $values);
 			[$data, $obsoleteFiles] = $this->prepareFiles($form, $definition, $data);
 			$data = $definition->beforeSave($data, $values, $this->entity);
 
@@ -923,8 +970,9 @@ final class ResourcePresenter extends BackofficePresenter
 	}
 
 	/**
-	 * Popisky vybraných položek vazeb: jméno pole → popisek (pole s hledáním ukazuje popisek, ne klíč).
-	 * @return array<string, string>
+	 * Popisky vybraných položek vazeb: jméno pole → popisek (pole s hledáním ukazuje popisek, ne klíč);
+	 * u víc vazeb jméno pole → klíč → popisek.
+	 * @return array<string, string|array<string, string>>
 	 */
 	private function relationLabels(): array
 	{
@@ -940,12 +988,27 @@ final class ResourcePresenter extends BackofficePresenter
 
 			$control = $form->getComponent($field->name);
 			$value = $control instanceof \Nette\Forms\Controls\BaseControl ? $control->getValue() : null;
+			$pk = 'this.' . $repository->getStructure()->getPK()->getName();
+
+			if ($field->type === Field::TYPE_RELATIONS) {
+				// Štítky vybraných v pořadí výběru; neznámý klíč zůstane jako klíč (chybu hlásí pravidlo pole).
+				$keys = FormFactory::relationKeys($value);
+				$found = $keys === [] ? [] : $repository->many()->where($pk, $keys)->select(['bo_label' => $field->getRelationLabel()])->toArrayOf('bo_label');
+				$chips = [];
+
+				foreach ($keys as $key) {
+					$chips[$key] = \is_scalar($found[$key] ?? null) ? (string) $found[$key] : $key;
+				}
+
+				$labels[$field->name] = $chips;
+
+				continue;
+			}
 
 			if (!\is_scalar($value) || (string) $value === '') {
 				continue;
 			}
 
-			$pk = 'this.' . $repository->getStructure()->getPK()->getName();
 			$found = $repository->many()->where($pk, (string) $value)->select(['bo_label' => $field->getRelationLabel()])->toArrayOf('bo_label');
 			$label = \reset($found);
 			$labels[$field->name] = \is_scalar($label) ? (string) $label : (string) $value;
