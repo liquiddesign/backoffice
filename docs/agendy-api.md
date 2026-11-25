@@ -254,6 +254,26 @@ uložit, rozhoduje editor a `beforeSave()` agendy. PSE: TinyMCE 4 starého admin
 | `importRow(row)` | řádek importu CSV před uložením (sloupec → text): vrátí data k uložení, nepoužitelný řádek ohlásí `CsvRowException` s důvodem; smí doplnit sloupec klíče, který soubor nemá |
 | `formNotices(entity)` | upozornění nad formulářem záznamu: `[[FormNotice::WARN, 'text'], [FormNotice::INFO, 'text']]` (žlutě / modře) — např. kde se záznam na webu ukáže, kontrola odkazů |
 
+## Stránka nastavení (`Meta::settings()`)
+
+Agenda bez seznamu a bez záznamů — jeden formulář (např. přepínače webu v tabulce klíč → hodnota):
+
+```php
+public function meta(Meta $meta): void
+{
+	$meta->slug('settings')->title('Nastavení webu')->replaces(':Web:Admin:Setting')->settings();
+}
+
+public function loadSettings(): array   // pole → hodnota
+public function saveSettings(array $values): void
+public function settingsNotices(): array // upozornění nad formulářem, jako formNotices()
+```
+
+Adresa je `/r/<agenda>`, pole a sekce z `form()`, tlačítko jen „Uložit“ (Ctrl S), po uložení flash
+„Uloženo“ a záznam v logu změn (`objectId` = slug agendy). Uložit smí právo na úpravu (`…:detail`);
+kdo má jen prohlížení, vidí formulář zamčený. Zakládání, mazání, stránka záznamu ani signály seznamu
+nejsou; repozitář není potřeba.
+
 ## Vlastní obrazovka seznamu (`ListView`)
 
 Když návrh agendy není tabulka (kalendář, nástěnka), agenda vrátí vlastní komponentu:

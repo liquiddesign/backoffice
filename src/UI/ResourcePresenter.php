@@ -24,6 +24,7 @@ use Nette\Http\FileUpload;
 use Nette\Utils\Html;
 use Nette\Utils\Random;
 use Nette\Utils\Strings;
+use StORM\Connection;
 use StORM\Entity;
 
 /**
@@ -48,6 +49,10 @@ final class ResourcePresenter extends BackofficePresenter
 
 	#[Inject]
 	public ChangeLogger $changeLogger;
+
+	/** Jazyky webu (i pro stránku nastavení, která nemá repozitář). */
+	#[Inject]
+	public Connection $connection;
 
 	#[Inject]
 	public ImageStorage $images;
@@ -82,6 +87,13 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->title = $meta->getTitle();
 		$this->breadcrumbs = [[$meta->getTitle()]];
 
+		if ($meta->isSettings()) {
+			$this->prepareForm();
+			$this->buttons = [];
+
+			return;
+		}
+
 		if ($this->hasListView()) {
 			$this->buttons = $this->getListView()->headerButtons();
 			$this->template->setFile(__DIR__ . '/../Resource/templates/view.latte');
@@ -99,6 +111,17 @@ final class ResourcePresenter extends BackofficePresenter
 	 */
 	public function actionDefault(): void
 	{
+		$definition = $this->getDefinition();
+
+		// Stránka nastavení: formulář bez záznamu, hodnoty dodá agenda.
+		if ($definition->getMeta()->isSettings()) {
+			if (!$this['form']->isSubmitted()) {
+				$this['form']->setDefaults($definition->loadSettings());
+			}
+
+			return;
+		}
+
 		if (!$this->hasListView()) {
 			return;
 		}
@@ -110,7 +133,6 @@ final class ResourcePresenter extends BackofficePresenter
 			return;
 		}
 
-		$definition = $this->getDefinition();
 		$entity = $definition->getMeta()->getRepository()->one($id);
 
 		if ($entity === null || !$this->isAllowedAction('edit') || $definition->lockReason($entity) !== null) {
@@ -539,7 +561,7 @@ final class ResourcePresenter extends BackofficePresenter
 	 */
 	public function mutations(): array
 	{
-		return \array_keys($this->getDefinition()->getMeta()->getRepository()->getConnection()->getAvailableMutations());
+		return \array_keys($this->connection->getAvailableMutations());
 	}
 
 	/**
@@ -596,6 +618,10 @@ final class ResourcePresenter extends BackofficePresenter
 
 		$form->onSuccess[] = function (Form $form, array $values) use ($definition): void {
 			$meta = $definition->getMeta();
+
+			if ($meta->isSettings()) {
+				$this->saveSettings($definition, $values);
+			}
 
 			if (!$this->isAllowedAction($this->entity !== null ? 'edit' : 'new')) {
 				$this->error('Na uložení nemáte oprávnění.', 403);
@@ -718,6 +744,10 @@ final class ResourcePresenter extends BackofficePresenter
 
 	protected function createComponentList(): ListControl
 	{
+		if ($this->getDefinition()->getMeta()->isSettings()) {
+			$this->error('Stránka nastavení nemá seznam.');
+		}
+
 		return new ListControl();
 	}
 
@@ -743,14 +773,22 @@ final class ResourcePresenter extends BackofficePresenter
 		$this->template->fileInfo = $this->fileInfo();
 		$this->template->relationLabels = $this->relationLabels();
 		$this->template->richText = $this->richText;
+		$this->template->settings = $this->getDefinition()->getMeta()->isSettings();
 
 		if ($this->entity !== null && $this->getDefinition()->deleteBlockReason($this->entity) !== null) {
 			$this->template->canDelete = false;
 		}
 
 		$lock = $this->entity !== null ? $this->getDefinition()->lockReason($this->entity) : null;
+		$notices = $this->entity !== null ? $this->getDefinition()->formNotices($this->entity) : [];
+
+		if ($this->getDefinition()->getMeta()->isSettings()) {
+			$lock = $this->isAllowedAction('edit') ? null : 'Nastavení můžete jen prohlížet — na změny nemáte oprávnění.';
+			$notices = $this->getDefinition()->settingsNotices();
+		}
+
 		$this->template->lockReason = $lock;
-		$this->template->notices = $this->entity !== null ? $this->getDefinition()->formNotices($this->entity) : [];
+		$this->template->notices = $notices;
 
 		if ($lock !== null) {
 			$this->template->canDelete = false;
@@ -765,6 +803,23 @@ final class ResourcePresenter extends BackofficePresenter
 		}
 
 		$this->template->setFile(__DIR__ . '/../Resource/templates/form.latte');
+	}
+
+	/**
+	 * Uložení stránky nastavení (Meta::settings()): hodnoty jdou agendě, do logu pod jménem agendy.
+	 * @param array<string, mixed> $values
+	 */
+	private function saveSettings(ResourceDefinition $definition, array $values): never
+	{
+		if (!$this->isAllowedAction('edit')) {
+			$this->error('Na změnu nastavení nemáte oprávnění.', 403);
+		}
+
+		$definition->saveSettings($values);
+		$this->changeLogger->log($definition->getMeta()->getTitle(), ChangeLogger::TYPE_DETAIL, $definition->getMeta()->getSlug());
+		$definition->changed();
+		$this->flashMessage('Uloženo', 'success');
+		$this->redirect('default');
 	}
 
 	/**

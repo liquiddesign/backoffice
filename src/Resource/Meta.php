@@ -33,6 +33,8 @@ final class Meta
 
 	private bool $detail = true;
 
+	private bool $settings = false;
+
 	public function slug(string $slug): self
 	{
 		if (!\preg_match('~^[a-z][a-z0-9-]*$~', $slug)) {
@@ -116,6 +118,26 @@ final class Meta
 		$this->detail = false;
 
 		return $this;
+	}
+
+	/**
+	 * Agenda je jedna stránka nastavení: formulář bez seznamu a bez záznamů. Hodnoty čte
+	 * ResourceDefinition::loadSettings() a ukládá saveSettings(); zakládání, mazání a stránka
+	 * záznamu nejsou. Repozitář není potřeba.
+	 */
+	public function settings(): self
+	{
+		$this->settings = true;
+		$this->create = false;
+		$this->delete = false;
+		$this->detail = false;
+
+		return $this;
+	}
+
+	public function isSettings(): bool
+	{
+		return $this->settings;
 	}
 
 	public function hasCreate(): bool

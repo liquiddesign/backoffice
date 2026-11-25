@@ -26,3 +26,14 @@ test('bez starého presenteru vlastní oprávnění', function (): void {
 test('neplatný slug', function (): void {
 	Assert::exception(fn () => (new Meta())->slug('Neobchodní dny'), InvalidArgumentException::class);
 });
+
+test('stránka nastavení: bez zakládání, mazání a stránky záznamu, repozitář netřeba', function (): void {
+	$meta = (new Meta())->slug('settings')->title('Nastavení')->settings();
+
+	Assert::true($meta->isSettings());
+	Assert::false($meta->hasCreate());
+	Assert::false($meta->hasDelete());
+	Assert::false($meta->hasDetail());
+	Assert::false((new Meta())->isSettings());
+	Assert::same(':Backoffice:Resource:default', $meta->permissionLink('default'));
+});

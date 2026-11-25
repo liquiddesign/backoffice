@@ -7,6 +7,7 @@
 {varType array $relationLabels}
 {varType string|null $lockReason}
 {varType list<array{string, string}> $notices}
+{varType bool $settings}
 {block content}
 	<form n:name="form" class="bo-form" data-bo-form novalidate>
 		<div n:foreach="$form->getOwnErrors() as $error" class="bo-flash bo-flash-error" role="alert"><span>{$error}</span></div>
@@ -25,7 +26,7 @@
 			<span class="bo-savebar-state" data-bo-dirty-label>Všechny změny jsou uložené</span>
 			<span class="bo-spacer"></span>
 			<a class="bo-btn bo-btn-ghost" n:href="this" data-bo-discard>Zahodit změny</a>
-			<button n:name="saveClose" class="bo-btn bo-btn-outline">Uložit a zavřít</button>
+			<button n:if="!$settings" n:name="saveClose" class="bo-btn bo-btn-outline">Uložit a zavřít</button>
 			<button n:name="save" class="bo-btn bo-btn-primary" data-bo-save>Uložit <kbd class="bo-kbd bo-hide-sm">Ctrl S</kbd></button>
 		</div>
 	</form>

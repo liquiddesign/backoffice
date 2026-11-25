@@ -47,7 +47,13 @@ abstract class ResourceDefinition
 
 	abstract public function meta(Meta $meta): void;
 
-	abstract public function list(ListBuilder $list): void;
+	/**
+	 * Sloupce, hledání, filtry a akce seznamu. Stránka nastavení (Meta::settings()) seznam nemá.
+	 */
+	public function list(ListBuilder $list): void
+	{
+		unset($list);
+	}
 
 	/**
 	 * Formulář záznamu. Agenda bez stránky záznamu (Meta::withoutDetail()) ho nepotřebuje.
@@ -157,6 +163,35 @@ abstract class ResourceDefinition
 	public function importRow(array $row): array
 	{
 		return $row;
+	}
+
+	/**
+	 * Hodnoty stránky nastavení (Meta::settings()): pole formuláře → hodnota.
+	 * @return array<string, mixed>
+	 */
+	public function loadSettings(): array
+	{
+		throw new \LogicException('Agenda s Meta::settings() musí mít loadSettings().');
+	}
+
+	/**
+	 * Uložení stránky nastavení (Meta::settings()): hodnoty polí formuláře po kontrole.
+	 * @param array<string, mixed> $values
+	 */
+	public function saveSettings(array $values): void
+	{
+		unset($values);
+
+		throw new \LogicException('Agenda s Meta::settings() musí mít saveSettings().');
+	}
+
+	/**
+	 * Upozornění nad stránkou nastavení (Meta::settings()) — obdoba formNotices() bez záznamu.
+	 * @return list<array{string, string}>
+	 */
+	public function settingsNotices(): array
+	{
+		return [];
 	}
 
 	/**
