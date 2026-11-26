@@ -150,6 +150,22 @@ test('vnořený seznam: kontejner na řádek, výchozí hodnoty z řádku', func
 
 });
 
+test('víc souborů a obrázek v řádku: nahrání, do sloupců záznamu nejdou', function (): void {
+	$builder = new FormBuilder();
+	$builder->uploads('photos', 'Fotky')->accept(['image/jpeg'], 'Jen JPG.');
+	$builder->rows('files', 'Soubory')->rowImage('preview', 'Náhled');
+	$factory = new FormFactory();
+	$form = $factory->create($builder, ['cs'], fn (string $field): array => $field === 'files' ? [new Backoffice\Resource\Form\FormRow('f1', 'Logo')] : []);
+
+	Assert::type(Nette\Forms\Controls\UploadControl::class, $form['photos']);
+	Assert::true($form['photos']->getControl()->multiple);
+	Assert::same('image/jpeg', $form['photos']->getControl()->accept);
+	Assert::same(FormFactory::maxFileUploads(), (int) $form['photos']->getControl()->{'data-bo-max-files'});
+	Assert::type(Nette\Forms\Controls\UploadControl::class, $form['files']['f1']['preview']);
+	Assert::true(FormFactory::isUpload($builder->getFields()['photos']));
+	Assert::exception(fn () => $builder->text('x', 'X')->rowImage('p', 'P'), LogicException::class);
+});
+
 test('vnořený seznam: pole řádku jen u rows(), řazení jen podle čísla', function (): void {
 	$builder = new FormBuilder();
 	Assert::exception(fn () => $builder->text('a', 'A')->rowText('x', 'X'), LogicException::class);

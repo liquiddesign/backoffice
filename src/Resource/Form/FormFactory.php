@@ -26,6 +26,8 @@ final class FormFactory
 
 	private const DATE_PATTERN = '\d{4}-\d{2}-\d{2}';
 
+	private const IMAGE_TYPES = 'image/jpeg,image/png,image/gif,image/webp';
+
 	/**
 	 * @param list<string> $mutations jazyky v pořadí, první je hlavní
 	 * @param (\Closure(string): list<\Backoffice\Resource\Form\FormRow>)|null $rows řádky vnořeného seznamu podle jména pole
@@ -56,6 +58,12 @@ final class FormFactory
 
 			if ($field->type === Field::TYPE_FILE) {
 				$this->addFile($form, $field);
+
+				continue;
+			}
+
+			if ($field->type === Field::TYPE_UPLOADS) {
+				$this->addUploads($form, $field);
 
 				continue;
 			}
@@ -207,11 +215,20 @@ final class FormFactory
 	}
 
 	/**
-	 * Obrázek nebo soubor — ukládá je presenter zvlášť, do hodnot formuláře nepatří.
+	 * Obrázek, soubor nebo víc souborů — do sloupců záznamu se nezapisují (obrázek a soubor ukládá
+	 * presenter zvlášť, víc souborů agenda v afterSave()).
 	 */
 	public static function isUpload(Field $field): bool
 	{
-		return $field->type === Field::TYPE_IMAGE || $field->type === Field::TYPE_FILE;
+		return Arrays::contains([Field::TYPE_IMAGE, Field::TYPE_FILE, Field::TYPE_UPLOADS], $field->type);
+	}
+
+	/**
+	 * Kolik souborů PHP přijme v jednom požadavku (max_file_uploads); přebytečné by tiše zahodilo.
+	 */
+	public static function maxFileUploads(): int
+	{
+		return \max(1, (int) \ini_get('max_file_uploads'));
 	}
 
 	/**
@@ -271,6 +288,15 @@ final class FormFactory
 			$rowContainer = $container->addContainer($row->key);
 
 			foreach ($field->getRowColumns() as $name => $column) {
+				if ($column['type'] === Field::ROW_IMAGE) {
+					$upload = $rowContainer->addUpload($name, $column['label']);
+					$upload->setHtmlAttribute('accept', self::IMAGE_TYPES);
+					$upload->addCondition(Form::Filled)
+						->addRule(Form::Image, 'Nahrajte obrázek JPG, PNG, GIF nebo WebP (' . $row->label . ').');
+
+					continue;
+				}
+
 				$control = match ($column['type']) {
 					Field::ROW_CHECKBOX => $rowContainer->addCheckbox($name, $column['label']),
 					Field::ROW_INTEGER => $rowContainer->addInteger($name, $column['label']),
@@ -313,7 +339,7 @@ final class FormFactory
 	private function addImage(Form $form, Field $field): void
 	{
 		$upload = $form->addUpload($field->name, $field->label);
-		$upload->setHtmlAttribute('accept', 'image/jpeg,image/png,image/gif,image/webp');
+		$upload->setHtmlAttribute('accept', self::IMAGE_TYPES);
 		$upload->addCondition(Form::Filled)
 			->addRule(Form::Image, 'Nahrajte obrázek JPG, PNG, GIF nebo WebP.');
 		$form->addCheckbox($field->name . self::REMOVE_SUFFIX, 'Odstranit obrázek');
@@ -330,6 +356,20 @@ final class FormFactory
 		}
 
 		$form->addCheckbox($field->name . self::REMOVE_SUFFIX, 'Odstranit soubor');
+	}
+
+	private function addUploads(Form $form, Field $field): void
+	{
+		$upload = $form->addMultiUpload($field->name, $field->label);
+		$upload->setHtmlAttribute('data-bo-max-files', self::maxFileUploads());
+
+		if ($field->getAcceptTypes() === []) {
+			return;
+		}
+
+		$upload->setHtmlAttribute('accept', \implode(',', $field->getAcceptTypes()));
+		$upload->addCondition(Form::Filled)
+			->addRule(Form::MimeType, $field->getAcceptMessage() ?? 'Nepovolený typ souboru.', $field->getAcceptTypes());
 	}
 
 	private function createControl(Form $form, Field $field): BaseControl

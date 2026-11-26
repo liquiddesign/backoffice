@@ -9,6 +9,7 @@
 {varType array $activeFilters}
 {varType array $perPageOptions}
 {varType string|null $sortKey}
+{varType array $treeLevels}
 {varType string $direction}
 {varType bool $canEdit}
 {varType bool $canDelete}
@@ -133,7 +134,7 @@
 							{else}
 								{var $value = $control->cellValue($row, $column)}
 								{if $column->isLink() && $hasDetail}
-									<a class="bo-cell-link" href="{plink edit id => $pk}">{$value === null || $value === '' ? '(bez názvu)' : $value}</a>
+									<span n:if="$treeLevels[$pk] ?? 0" class="bo-tree-indent" aria-hidden="true">{str_repeat('— ', $treeLevels[$pk])}</span><a class="bo-cell-link" href="{plink edit id => $pk}">{$value === null || $value === '' ? '(bez názvu)' : $value}</a>
 								{elseif $value === null || $value === ''}
 									<span class="bo-muted">—</span>
 								{elseif $control->cellUrl($row, $column) !== null}

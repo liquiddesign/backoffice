@@ -46,6 +46,9 @@ final class ListControl extends Control
 	#[Persistent]
 	public int $perPage = 0;
 
+	/** @var array<string, int>|null */
+	private ?array $treeLevels = null;
+
 	private ?ListBuilder $list = null;
 
 	/**
@@ -130,6 +133,7 @@ final class ListControl extends Control
 		$template->selection = $canEdit && ($list->getBulkActions() !== [] || ($list->hasBulkDelete() && $presenter->canDelete()));
 		$template->canReorder = $canEdit && $priority !== null && $sortKey === $priority->key && $direction === 'ASC';
 		$template->pkName = $this->pkName();
+		$template->treeLevels = $sortKey === ListBuilder::TREE ? $this->treeLevels() : [];
 		$template->setFile(__DIR__ . '/../templates/list.latte');
 		$template->render();
 	}
@@ -336,6 +340,7 @@ final class ListControl extends Control
 		}
 
 		$undo = [];
+		$deleted = 0;
 		$failed = 0;
 		$skipped = [];
 
@@ -351,6 +356,7 @@ final class ListControl extends Control
 			}
 
 			$data = $entity->toArray();
+			$undoable = $definition->beforeDelete($entity);
 
 			try {
 				$entity->delete();
@@ -362,12 +368,18 @@ final class ListControl extends Control
 
 			$data[ResourcePresenter::UNDO_FILES] = $presenter->trashFiles($entity);
 			$presenter->logChange(ChangeLogger::TYPE_DELETE, (string) $pk);
+			$deleted++;
+
+			if (!$undoable) {
+				continue;
+			}
+
 			$undo[] = ['restore', (string) $pk, $data];
 		}
 
-		if ($undo !== []) {
+		if ($deleted > 0) {
 			$presenter->getDefinition()->changed();
-			$presenter->flashWithUndo('Smazáno: ' . self::records(\count($undo)) . '.', $undo);
+			$presenter->flashWithUndo('Smazáno: ' . self::records($deleted) . '.', $undo);
 		}
 
 		if ($skipped !== []) {
@@ -378,7 +390,7 @@ final class ListControl extends Control
 			$presenter->flashMessage('Nepodařilo se smazat ' . self::records($failed) . ' — nejspíš se na ně odkazují jiná data.', 'error');
 		}
 
-		if ($undo !== [] || $failed !== 0 || $skipped !== []) {
+		if ($deleted > 0 || $failed !== 0 || $skipped !== []) {
 			return;
 		}
 
@@ -581,7 +593,14 @@ final class ListControl extends Control
 		$order = [];
 		$column = $sortKey !== null ? $this->getList()->getColumn($sortKey) : null;
 
-		if ($column !== null) {
+		if ($sortKey === ListBuilder::TREE) {
+			$link = $this->presenter()->getDefinition()->getMeta()->getRepository()->getConnection()->getLink();
+			$keys = \array_map(static fn (string|int $key): string => (string) $link->quote((string) $key), \array_keys($this->treeLevels()));
+
+			if ($keys !== []) {
+				$order['FIELD(this.' . $this->pkName() . ', ' . \implode(', ', $keys) . ')'] = 'ASC';
+			}
+		} elseif ($column !== null) {
 			$order[$this->sqlColumn($column->name, $column->mutation)] = $direction;
 		} elseif ($sortKey !== null) {
 			$order[$this->sqlColumn($sortKey)] = $direction;
@@ -590,6 +609,53 @@ final class ListControl extends Control
 		// Stálé pořadí při shodných hodnotách (stránkování, přetahování).
 		$order['this.' . $this->pkName()] = 'ASC';
 		$collection->orderBy($order);
+	}
+
+	/**
+	 * Strom (ListBuilder::tree()) do hloubky: klíč záznamu → úroveň (0 = kořen), v pořadí výpisu.
+	 * Záznam s neexistujícím nadřazeným nebo v cyklu se ukáže na konci jako kořen.
+	 * @return array<string, int>
+	 */
+	private function treeLevels(): array
+	{
+		if ($this->treeLevels !== null) {
+			return $this->treeLevels;
+		}
+
+		$list = $this->getList();
+		$parent = (string) $list->getTreeParent();
+		$children = [];
+		$all = [];
+
+		foreach ($this->presenter()->getDefinition()->getMeta()->getRepository()->many()->orderBy($list->getTreeOrder()) as $entity) {
+			$key = (string) $entity->getPK();
+			$all[] = $key;
+			$children[(string) ($entity->getValue($parent) ?? '')][] = $key;
+		}
+
+		$levels = [];
+		$walk = static function (string $parentKey, int $level) use (&$walk, &$levels, $children): void {
+			foreach ($children[$parentKey] ?? [] as $key) {
+				if (isset($levels[$key])) {
+					continue;
+				}
+
+				$levels[$key] = $level;
+				$walk($key, $level + 1);
+			}
+		};
+		$walk('', 0);
+
+		foreach ($all as $key) {
+			if (isset($levels[$key])) {
+				continue;
+			}
+
+			$levels[$key] = 0;
+			$walk($key, 1);
+		}
+
+		return $this->treeLevels = $levels;
 	}
 
 	private function getPerPage(): int

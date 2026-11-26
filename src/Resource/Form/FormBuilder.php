@@ -133,8 +133,19 @@ final class FormBuilder
 	}
 
 	/**
+	 * Víc souborů najednou (fotky do galerie…): pole s přetažením, povolené typy přes ->accept().
+	 * Do sloupců záznamu nejde — v afterSave() je v $values list Nette\Http\FileUpload a agenda
+	 * je uloží sama. Kolik souborů projde jedním odesláním, určuje PHP (max_file_uploads); víc
+	 * pole nepustí už v prohlížeči.
+	 */
+	public function uploads(string $name, string $label): Field
+	{
+		return $this->add(Field::TYPE_UPLOADS, $name, $label);
+	}
+
+	/**
 	 * Vnořený seznam podřízených záznamů (konzultanti ve skupině, skupiny konzultanta): řádky dodá
-	 * ResourceDefinition::formRows(), pole řádků ->rowCheckbox() / ->rowInteger() / ->rowText(),
+	 * ResourceDefinition::formRows(), pole řádků ->rowCheckbox() / ->rowInteger() / ->rowText() / ->rowImage(),
 	 * přetahování ->rowsSortableBy(). Hodnoty přijdou jako $values[jméno][klíč řádku][pole]
 	 * a uloží je ResourceDefinition::afterSave() — do sloupců záznamu nejdou.
 	 */

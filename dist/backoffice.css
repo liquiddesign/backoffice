@@ -603,7 +603,7 @@ button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
 .bo-image-drop u { color: var(--adm-primary); }
 .bo-image-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .bo-image-input:focus-visible + .bo-image-text { outline: 2px solid var(--adm-primary); outline-offset: 2px; }
-.bo-image.is-invalid .bo-image-drop { border-color: var(--adm-danger); }
+.bo-image.is-invalid .bo-image-drop, .bo-image-drop.is-invalid { border-color: var(--adm-danger); }
 .bo-image-remove { margin-top: 4px; font-size: 13px; }
 .bo-cell-image { display: block; width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: var(--adm-surface-2); }
 .bo-cell-image-empty { border: 1px dashed var(--adm-line); }
@@ -679,6 +679,7 @@ button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
 .bo-rows-label small { display: block; font-size: 12px; }
 .bo-rows-label a { color: var(--adm-ink); font-weight: 500; text-decoration: none; }
 .bo-rows-label a:hover { color: var(--adm-primary); text-decoration: underline; }
+.bo-row-upload { max-width: 200px; font-size: 12.5px; }
 .bo-rows-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; background: var(--adm-line, #eee); flex: none; }
 .bo-rows-table input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--adm-primary); }
 
@@ -690,3 +691,4 @@ button.bo-cal-day:hover, a.bo-cal-day:hover { outline: 1px solid #b9a3cc; }
 .bo-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--adm-primary-soft); color: var(--adm-primary); font-size: 13px; line-height: 1.3; }
 .bo-chip-remove { border: 0; background: none; color: inherit; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 6px; border-radius: 999px; }
 .bo-chip-remove:hover, .bo-chip-remove:focus-visible { background: rgba(0, 0, 0, .08); }
+.bo-tree-indent { color: var(--adm-muted); white-space: pre; }

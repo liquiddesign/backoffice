@@ -14,6 +14,9 @@ final class ListBuilder
 {
 	public const PER_PAGE_OPTIONS = [20, 50, 100, 200];
 
+	/** Klíč výchozího řazení stromem (ListBuilder::tree()). */
+	public const TREE = '__tree';
+
 	/** @var array<string, \Backoffice\Resource\List\Column> */
 	private array $columns = [];
 
@@ -41,6 +44,11 @@ final class ListBuilder
 
 	/** @var list<string>|null sloupce, podle kterých import pozná existující záznam; null = bez importu */
 	private ?array $csvImportKey = null;
+
+	private ?string $treeParent = null;
+
+	/** @var array<string, string> */
+	private array $treeOrder = [];
 
 	/**
 	 * @param string|null $mutation u jazykového sloupce pevný jazyk (dva sloupce „Text CS“ a „Text EN“)
@@ -106,6 +114,16 @@ final class ListBuilder
 	public function file(string $name, string $label, string $directory): Column
 	{
 		return $this->add((new Column(Column::TYPE_FILE, $name, $label))->directory($directory));
+	}
+
+	/**
+	 * Vypočtený sloupec bez sloupce v tabulce (počet fotek, názvy skupin…): hodnotu vrátí
+	 * $value(Entity). Klíč $key jen pojmenuje sloupec seznamu — řadit ani hledat podle něj nejde.
+	 * @param callable(\StORM\Entity): mixed $value
+	 */
+	public function computed(string $key, string $label, callable $value): Column
+	{
+		return $this->add(new Column(Column::TYPE_TEXT, $key, $label))->value($value);
 	}
 
 	/**
@@ -187,6 +205,35 @@ final class ListBuilder
 		$this->defaultDirection = $direction;
 
 		return $this;
+	}
+
+	/**
+	 * Záznamy ve stromu (nadřazený záznam ve vazbě $parent na stejnou tabulku): výchozí řazení je
+	 * strom — podřízené hned pod nadřazeným, odsazené podle hloubky, sourozenci podle $siblingOrder
+	 * (SQL řazení, např. ['this.priority' => 'ASC']). Klik na záhlaví sloupce řadí jako obvykle.
+	 * @param array<string, string> $siblingOrder
+	 */
+	public function tree(string $parent, array $siblingOrder): self
+	{
+		$this->treeParent = $parent;
+		$this->treeOrder = $siblingOrder;
+		$this->defaultSort = self::TREE;
+		$this->defaultDirection = 'ASC';
+
+		return $this;
+	}
+
+	public function getTreeParent(): ?string
+	{
+		return $this->treeParent;
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	public function getTreeOrder(): array
+	{
+		return $this->treeOrder;
 	}
 
 	/**

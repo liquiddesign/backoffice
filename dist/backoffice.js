@@ -606,6 +606,32 @@
 				return;
 			}
 
+			// Víc souborů (FormBuilder::uploads()): počet a jména; přes limit PHP by se zbytek tiše ztratil.
+			if (input.multiple) {
+				var max = parseInt(input.dataset.boMaxFiles || '0', 10);
+				var names = Array.prototype.map.call(input.files, function (one) { return one.name; });
+				var files = function (n) { return n + (n >= 2 && n <= 4 ? ' soubory' : ' souborů'); };
+
+				if (max > 0 && input.files.length > max) {
+					input.value = '';
+					box.classList.add('is-invalid');
+
+					if (text) {
+						text.textContent = 'Vybráno ' + files(names.length) + ', najednou jde nahrát nejvýš ' + max + '. Vyberte méně a zbytek nahrajte po uložení.';
+					}
+
+					return;
+				}
+
+				box.classList.remove('is-invalid');
+
+				if (text) {
+					text.textContent = (names.length === 1 ? names[0] : files(names.length) + ': ' + names.slice(0, 5).join(', ') + (names.length > 5 ? ' …' : '')) + ' — uloží se s formulářem';
+				}
+
+				return;
+			}
+
 			if (text) {
 				text.textContent = file.name + ' · ' + Math.max(1, Math.round(file.size / 1024)) + ' kB — uloží se s formulářem';
 			}

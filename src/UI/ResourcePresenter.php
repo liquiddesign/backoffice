@@ -239,6 +239,8 @@ final class ResourcePresenter extends BackofficePresenter
 				$this->getListView()->focus($entity);
 			}
 
+			$undoable = $this->getDefinition()->beforeDelete($entity);
+
 			try {
 				$entity->delete();
 			} catch (\PDOException) {
@@ -249,7 +251,7 @@ final class ResourcePresenter extends BackofficePresenter
 			$data[self::UNDO_FILES] = $this->trashFiles($entity);
 			$this->changeLogger->log($meta->getTitle(), ChangeLogger::TYPE_DELETE, $id);
 			$this->getDefinition()->changed();
-			$this->flashWithUndo("Smazáno: $title", [['restore', $id, $data]]);
+			$this->flashWithUndo("Smazáno: $title", $undoable ? [['restore', $id, $data]] : []);
 		}
 
 		$this->redirect('default', $this->listParameters());

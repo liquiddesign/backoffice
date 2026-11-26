@@ -93,6 +93,16 @@
 			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
 			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
 		</div>
+	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_UPLOADS}
+		<div class="bo-field">
+			<label n:name="$field->name">{$field->label}{if $field->isRequired()} <span class="bo-req" aria-hidden="true">*</span>{/if}</label>
+			<div n:class="bo-image-drop, bo-file-drop, $form[$field->name]->hasErrors() ? is-invalid" data-bo-file>
+				<input n:name="$field->name" class="bo-image-input">
+				<span class="bo-image-text" data-bo-image-text>Přetáhněte soubory, nebo <u>vyberte</u> — najednou nejvýš {Backoffice\Resource\Form\FormFactory::maxFileUploads()}</span>
+			</div>
+			<span class="bo-field-error" n:ifcontent>{inputError $field->name}</span>
+			<p n:if="$field->getDescription()" class="bo-help">{$field->getDescription()}</p>
+		</div>
 	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_ROWS}
 		{include rows, field: $field, rows: ($formRows ?? [])[$field->name] ?? []}
 	{elseif $field->type === Backoffice\Resource\Form\Field::TYPE_CHECKBOX}
@@ -175,6 +185,8 @@
 									<td>
 										{if $column['type'] === Backoffice\Resource\Form\Field::ROW_CHECKBOX}
 											<input n:name="$name" aria-label="{$column['label']} — {$row->label}">
+										{elseif $column['type'] === Backoffice\Resource\Form\Field::ROW_IMAGE}
+											<input n:name="$name" class="bo-row-upload" aria-label="{$column['label']} — {$row->label}">
 										{elseif $column['type'] === Backoffice\Resource\Form\Field::ROW_INTEGER}
 											<input n:name="$name" n:class="bo-input, bo-cell-input, bo-cell-number, $formContainer[$name]->hasErrors() ? is-invalid" aria-label="{$column['label']} — {$row->label}" n:attr="data-bo-rows-priority: $name === $sort">
 										{else}

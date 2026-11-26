@@ -31,10 +31,12 @@ final class Field
 	public const TYPE_ROWS = 'rows';
 	public const TYPE_DATETIME = 'datetime';
 	public const TYPE_RELATIONS = 'relations';
+	public const TYPE_UPLOADS = 'uploads';
 
 	public const ROW_CHECKBOX = 'checkbox';
 	public const ROW_INTEGER = 'integer';
 	public const ROW_TEXT = 'text';
+	public const ROW_IMAGE = 'image';
 
 	private bool $required = false;
 
@@ -491,6 +493,15 @@ final class Field
 	public function rowText(string $name, string $label, ?string $placeholder = null): self
 	{
 		return $this->addRowColumn($name, self::ROW_TEXT, $label, $placeholder);
+	}
+
+	/**
+	 * Vnořený seznam: nahrání obrázku v každém řádku (náhled k souboru…). Agenda dostane v afterSave()
+	 * Nette\Http\FileUpload — prázdný, když se v řádku nic nevybralo — a uloží si ho sama.
+	 */
+	public function rowImage(string $name, string $label): self
+	{
+		return $this->addRowColumn($name, self::ROW_IMAGE, $label);
 	}
 
 	/**

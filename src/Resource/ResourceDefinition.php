@@ -107,6 +107,19 @@ abstract class ResourceDefinition
 	}
 
 	/**
+	 * Těsně před smazáním záznamu (z jeho stránky i hromadně): úklid toho, co k záznamu patří mimo
+	 * jeho tabulku a co databáze sama nesmaže — soubory na disku, závislé řádky. Vrátí, jestli jde
+	 * smazání vrátit („Vrátit“ ve zprávě založí jen řádek záznamu): false, když hook smazal něco,
+	 * co se s ním nevrátí. Bez úklidu (výchozí) true.
+	 */
+	public function beforeDelete(Entity $entity): bool
+	{
+		unset($entity);
+
+		return true;
+	}
+
+	/**
 	 * Upozornění nad formulářem záznamu (kde se záznam na webu ukáže, kontrola odkazů…):
 	 * dvojice [úroveň, text], úroveň FormNotice::WARN (žlutě) nebo FormNotice::INFO (modře).
 	 * @return list<array{string, string}>

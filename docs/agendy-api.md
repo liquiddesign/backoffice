@@ -87,6 +87,8 @@ Tabulka podle návrhu „Seznam“: filtr nahoře, tabulka, lišta dole (výběr
 | `priority(name = 'priority')` | pořadí: číslo v řádku + přetahování za úchyt, výchozí řazení |
 | `image(name, label, directory)` | náhled obrázku z `userfiles/<directory>` (40 × 40) |
 | `file(name, label, directory)` | jméno souboru jako odkaz ke stažení |
+| `computed(key, label, fn)` | spočítaný sloupec bez sloupce v tabulce (počet fotek…); jen zobrazení |
+| `tree(parent, siblingOrder)` | záznamy ve stromu (vazba `parent` na stejnou tabulku): výchozí řazení stromem, podřízené odsazené pod nadřazeným, sourozenci podle `siblingOrder` (`['this.priority' => 'ASC']`) |
 | `usage(label = 'Použito')` | počet míst, kde se záznam používá (`ResourceDefinition::usages()`), odkaz na jejich seznam |
 | `mutations(label = 'Jazyky', column = null)` | štítky jazyků: vyplněné jazykové sloupce, nebo podle booleovského sloupce (`active`) |
 | `search(placeholder)` | text v poli „Hledat“; hledá se ve sloupcích s `->searchable()` |
@@ -295,6 +297,21 @@ nejdou; uloží je `afterSave()` (volá se po uložení nového i upraveného z�
 Chyba u pole řádku: `$form['members'][$id]['isins']->addError()`. Přetažení jen přečísluje pole
 a označí formulář za změněný — uloží se s ním.
 
+`->rowImage('preview', 'Náhled')` dá do řádku nahrání obrázku (náhled souboru, nová dlaždice):
+v `afterSave()` je to `Nette\Http\FileUpload` (prázdný, když se nic nevybralo) a agenda ho uloží sama.
+
+### Víc souborů najednou (`uploads`)
+
+```php
+$form->uploads('newPhotos', 'Přidat fotky')
+	->accept(['image/jpeg', 'image/png'], 'Nahrajte JPG nebo PNG.');
+```
+
+Pole s přetažením a `multiple`; do sloupců nejde, v `afterSave()` je `$values['newPhotos']` list
+`FileUpload`. Kolik souborů projde jedním odesláním, určuje PHP `max_file_uploads` (pole ho ukáže
+a víc nepustí už v prohlížeči — PHP by zbytek tiše zahodilo). Vzor: Galerie v PSE (fotky a soubory
+jako vnořené seznamy, nové přes `uploads`).
+
 ### Dvě agendy z jednoho starého presenteru
 
 `replaces()` přebírá oprávnění, položku menu i staré adresy. Druhá agenda téhož presenteru vezme jen
@@ -312,6 +329,7 @@ seznamu: `$meta->related('consultant-groups', 'Skupiny')` (ukáže se jen s prá
 | `deleteBlockReason(entity)` | záznam jde upravit, ale ne smazat (systémový): koš je šedý s důvodem v popisku, hromadné mazání ho přeskočí |
 | `importRow(row)` | řádek importu CSV před uložením (sloupec → text): vrátí data k uložení, nepoužitelný řádek ohlásí `CsvRowException` s důvodem; smí doplnit sloupec klíče, který soubor nemá |
 | `formRows(field, entity)` / `afterSave(entity, values, created)` | řádky vnořeného seznamu (viz výše) / uložení dat mimo sloupce záznamu po jeho uložení |
+| `beforeDelete(entity)` | těsně před smazáním (stránka záznamu i hromadně): úklid mimo tabulku — soubory, závislé řádky. Vrátí `false`, když smazal něco nevratně; zpráva pak „Vrátit“ nemá |
 | `formNotices(entity)` | upozornění nad formulářem záznamu: `[[FormNotice::WARN, 'text'], [FormNotice::INFO, 'text']]` (žlutě / modře) — např. kde se záznam na webu ukáže, kontrola odkazů |
 
 ## Stránka nastavení (`Meta::settings()`)

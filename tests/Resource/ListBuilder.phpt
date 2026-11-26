@@ -85,3 +85,26 @@ test('výběr řádků jen s hromadnou akcí', function (): void {
 	Assert::true($list->hasSelection());
 	Assert::same('hidden', $list->getBulkActions()[0]->column);
 });
+
+test('strom: výchozí řazení stromem, sourozenci podle zadaného pořadí', function (): void {
+	$list = new ListBuilder();
+	$list->text('name', 'Název')->sortable();
+	Assert::null($list->getTreeParent());
+
+	$list->tree('parentGallery', ['this.priority' => 'ASC']);
+	Assert::same(ListBuilder::TREE, $list->getDefaultSort());
+	Assert::same('ASC', $list->getDefaultDirection());
+	Assert::same('parentGallery', $list->getTreeParent());
+	Assert::same(['this.priority' => 'ASC'], $list->getTreeOrder());
+});
+
+test('vypočtený sloupec: vlastní klíč, hodnota z funkce', function (): void {
+	$list = new ListBuilder();
+	$list->text('name', 'Název');
+	$column = $list->computed('photoCount', 'Fotky', static fn (): string => '3');
+
+	Assert::same('photoCount', $column->key);
+	Assert::false($column->isSortable());
+	Assert::notNull($column->getValueCallback());
+	Assert::exception(fn () => $list->computed('name', 'Znovu', static fn (): string => ''), LogicException::class);
+});
